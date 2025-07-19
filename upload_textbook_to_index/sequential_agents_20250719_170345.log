@@ -1,0 +1,98 @@
+2025-07-19 17:03:45,344 - INFO - 🎬 Starting Sequential Agent Execution
+2025-07-19 17:03:45,345 - INFO - 📂 Working directory: /Users/rakeshkumar/PycharmProjects/GoogleAdkSampleProject/upload_textbook_to_index
+2025-07-19 17:03:45,345 - INFO - 🔍 Checking prerequisites...
+2025-07-19 17:03:46,538 - INFO - ✅ Required Google Cloud packages are available
+2025-07-19 17:03:46,538 - INFO - ✅ All prerequisites met
+2025-07-19 17:03:46,538 - INFO - 
+============================================================
+2025-07-19 17:03:46,538 - INFO - 🚀 Starting Agent 1 - PDF Processing with Document AI
+2025-07-19 17:03:46,538 - INFO - 📄 Script: agent_1_parses_pdf_with_document_ai.py
+2025-07-19 17:03:46,538 - INFO - 📝 Description: Processes PDFs using Google Document AI and outputs JSON to GCS
+2025-07-19 17:03:46,538 - INFO - ============================================================
+2025-07-19 17:07:31,353 - INFO - 📤 Agent 1 Output:
+2025-07-19 17:07:31,354 - INFO -    🔍 Testing connection to Document AI...
+2025-07-19 17:07:31,354 - INFO -    📋 Project ID: rag-engine-vertex-ai-project
+2025-07-19 17:07:31,354 - INFO -    🔧 Processor ID: dcb5c77d0e43d45b
+2025-07-19 17:07:31,354 - INFO -    🌍 Trying location: us
+2025-07-19 17:07:31,354 - INFO -    ✅ Found 1 processor(s) in us:
+2025-07-19 17:07:31,354 - INFO -      - ID: dcb5c77d0e43d45b
+2025-07-19 17:07:31,354 - INFO -        Name: Textbook Processor
+2025-07-19 17:07:31,354 - INFO -        Type: OCR_PROCESSOR
+2025-07-19 17:07:31,354 - INFO -        Full path: projects/437662606270/locations/us/processors/dcb5c77d0e43d45b
+2025-07-19 17:07:31,354 - INFO -    🎯 Found our target processor in us!
+2025-07-19 17:07:31,354 - INFO -       Name: Textbook Processor
+2025-07-19 17:07:31,354 - INFO -       Type: OCR_PROCESSOR
+2025-07-19 17:07:31,354 - INFO -    🚀 Starting batch processing...
+2025-07-19 17:07:31,354 - INFO -    ✅ Document AI processing complete.
+2025-07-19 17:07:31,354 - INFO -    📥 Downloaded output/chapter1-0.json
+2025-07-19 17:07:31,354 - INFO -    📥 Downloaded output/chapter1-1.json
+2025-07-19 17:07:31,354 - INFO -    📥 Downloaded output/chapter10-0.json
+2025-07-19 17:07:31,354 - INFO -    📥 Downloaded output/chapter7-0.json
+2025-07-19 17:07:31,354 - INFO -    📥 Downloaded output/chapter7-1.json
+2025-07-19 17:07:31,354 - INFO -    📥 Downloaded output/chapter8-0.json
+2025-07-19 17:07:31,354 - INFO -    📥 Downloaded output/chapter9-0.json
+2025-07-19 17:07:31,354 - INFO -    📥 Downloaded output/chapter9-1.json
+2025-07-19 17:07:31,354 - INFO -    📥 Downloaded output/chapter9-2.json
+2025-07-19 17:07:31,354 - INFO -    📥 Downloaded output/chapter11-0.json
+2025-07-19 17:07:31,354 - INFO -    📥 Downloaded output/chapter11-1.json
+2025-07-19 17:07:31,354 - INFO -    📥 Downloaded output/chapter11-2.json
+2025-07-19 17:07:31,354 - INFO -    📥 Downloaded output/chapter12-0.json
+2025-07-19 17:07:31,354 - INFO -    📥 Downloaded output/chapter12-1.json
+2025-07-19 17:07:31,354 - INFO -    📥 Downloaded output/chapter13-0.json
+2025-07-19 17:07:31,354 - INFO -    📥 Downloaded output/chapter2-0.json
+2025-07-19 17:07:31,354 - INFO -    📥 Downloaded output/chapter2-1.json
+2025-07-19 17:07:31,354 - INFO -    📥 Downloaded output/chapter3-0.json
+2025-07-19 17:07:31,354 - INFO -    📥 Downloaded output/chapter3-1.json
+2025-07-19 17:07:31,354 - INFO -    📥 Downloaded output/chapter3-2.json
+2025-07-19 17:07:31,354 - INFO -    📥 Downloaded output/chapter4-0.json
+2025-07-19 17:07:31,355 - INFO -    📥 Downloaded output/chapter4-1.json
+2025-07-19 17:07:31,355 - INFO -    📥 Downloaded output/chapter4-2.json
+2025-07-19 17:07:31,355 - INFO -    📥 Downloaded output/chapter5-0.json
+2025-07-19 17:07:31,355 - INFO -    📥 Downloaded output/chapter5-1.json
+2025-07-19 17:07:31,355 - INFO -    📥 Downloaded output/chapter5-2.json
+2025-07-19 17:07:31,355 - INFO -    📥 Downloaded output/chapter6-0.json
+2025-07-19 17:07:31,355 - INFO -    📥 Downloaded output/chapter6-1.json
+2025-07-19 17:07:31,355 - WARNING - ⚠️ Agent 1 Warnings/Errors:
+2025-07-19 17:07:31,355 - WARNING -    /Users/rakeshkumar/PycharmProjects/GoogleAdkSampleProject/.venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+2025-07-19 17:07:31,355 - WARNING -      warnings.warn(
+2025-07-19 17:07:31,355 - INFO - ✅ Agent 1 - PDF Processing with Document AI completed successfully
+2025-07-19 17:07:31,355 - INFO - ✅ Agent 1 completed successfully
+2025-07-19 17:07:31,355 - INFO - 
+============================================================
+2025-07-19 17:07:31,355 - INFO - 🚀 Starting Agent 2 - Convert to RAG Format
+2025-07-19 17:07:31,356 - INFO - 📄 Script: agent_2_convert_res_into_chapter_wise_json.py
+2025-07-19 17:07:31,356 - INFO - 📝 Description: Converts DocAI JSON into RAG-formatted chunks and uploads to GCS
+2025-07-19 17:07:31,356 - INFO - ============================================================
+2025-07-19 17:07:35,640 - INFO - 📤 Agent 2 Output:
+2025-07-19 17:07:35,640 - INFO -    🚧 Converting raw DocAI JSON to RAG format...
+2025-07-19 17:07:35,640 - INFO -    ✅ Converted 248 chunks and saved locally to converted_vertex_rag_docs.json
+2025-07-19 17:07:35,640 - INFO -    📤 Uploading to GCS...
+2025-07-19 17:07:35,640 - INFO -    ✅ Uploaded converted_vertex_rag_docs.json to gs://shahayak-agentic-ai-gpl-muskeeters/json/cbse/class10/science/class10_science.json
+2025-07-19 17:07:35,640 - INFO -    🎉 File ready for Agent 3 at: gs://shahayak-agentic-ai-gpl-muskeeters/json/cbse/class10/science/class10_science.json
+2025-07-19 17:07:35,640 - WARNING - ⚠️ Agent 2 Warnings/Errors:
+2025-07-19 17:07:35,640 - WARNING -    /Users/rakeshkumar/PycharmProjects/GoogleAdkSampleProject/.venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+2025-07-19 17:07:35,640 - WARNING -      warnings.warn(
+2025-07-19 17:07:35,640 - INFO - ✅ Agent 2 - Convert to RAG Format completed successfully
+2025-07-19 17:07:35,640 - INFO - ✅ Agent 2 completed successfully
+2025-07-19 17:07:35,640 - INFO - 
+============================================================
+2025-07-19 17:07:35,640 - INFO - 🚀 Starting Agent 3 - Upload to Vertex RAG
+2025-07-19 17:07:35,640 - INFO - 📄 Script: agent_3_upload_json_to_vertex_rag.py
+2025-07-19 17:07:35,640 - INFO - 📝 Description: Ingests processed files from GCS into Vertex RAG
+2025-07-19 17:07:35,640 - INFO - ============================================================
+2025-07-19 17:07:36,919 - WARNING - ⚠️ Agent 3 Warnings/Errors:
+2025-07-19 17:07:36,919 - WARNING -    /Users/rakeshkumar/PycharmProjects/GoogleAdkSampleProject/.venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+2025-07-19 17:07:36,919 - WARNING -      warnings.warn(
+2025-07-19 17:07:36,919 - WARNING -    Traceback (most recent call last):
+2025-07-19 17:07:36,919 - WARNING -      File "/Users/rakeshkumar/PycharmProjects/GoogleAdkSampleProject/upload_textbook_to_index/agent_3_upload_json_to_vertex_rag.py", line 3, in <module>
+2025-07-19 17:07:36,919 - WARNING -        from vertexai.preview.generative_models import RagCorpus
+2025-07-19 17:07:36,919 - WARNING -    ImportError: cannot import name 'RagCorpus' from 'vertexai.preview.generative_models' (/Users/rakeshkumar/PycharmProjects/GoogleAdkSampleProject/.venv/lib/python3.9/site-packages/vertexai/preview/generative_models.py)
+2025-07-19 17:07:36,919 - ERROR - ❌ Agent 3 - Upload to Vertex RAG failed with return code 1
+2025-07-19 17:07:36,920 - ERROR - ❌ Agent 3 failed. Stopping execution.
+2025-07-19 17:07:36,920 - INFO - 
+============================================================
+2025-07-19 17:07:36,920 - INFO - 📊 EXECUTION SUMMARY
+2025-07-19 17:07:36,920 - INFO - ============================================================
+2025-07-19 17:07:36,920 - INFO - ⏱️  Total execution time: 0:03:50.381636
+2025-07-19 17:07:36,920 - INFO - ✅ Successful agents: 2/3
+2025-07-19 17:07:36,920 - ERROR - ⚠️  Only 2 out of 3 agents completed successfully
