@@ -12,7 +12,7 @@ from vertexai.preview.rag import (
 PROJECT_ID = "rag-engine-vertex-ai-project"
 REGION = "us-central1"
 CORPUS_NAME = "CBSE_Class10"
-GCS_JSON_PATH = "gs://shahayak-agentic-ai-gpl-muskeeters/json/cbse/class10/english/class10_english.jsonl"
+GCS_JSON_PATH = "gs://shahayak-agentic-ai-gpl-muskeeters/json/cbse/class10/science/class10_science.jsonl"
 
 if __name__ == "__main__":
     # === INITIALIZE VERTEX AI ===

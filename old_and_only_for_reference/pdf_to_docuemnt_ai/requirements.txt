@@ -1,6 +1,0 @@
-google-cloud-documentai==2.25.0
-google-cloud-storage==2.16.0
-google-cloud-aiplatform>=1.49.0  # Must be recent for Vertex AI RAG
-google-auth>=2.22.0
-protobuf>=4.23.0
-grpcio>=1.54.0

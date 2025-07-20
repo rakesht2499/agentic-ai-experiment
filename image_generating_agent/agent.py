@@ -10,10 +10,6 @@ from vertexai.preview.vision_models import ImageGenerationModel
 import graphviz
 
 # --- Configuration for Vertex AI --- ###
-# IMPORTANT: Replace with your Google Cloud project and location
-os.environ["GOOGLE_CLOUD_PROJECT"] = "image-generation-sahayak"
-os.environ["GOOGLE_CLOUD_LOCATION"] = "us-central1"
-
 # ### --- CHANGED SECTION: The new, powerful tool that replaces the dummy one --- ###
 def generate_visual_content(prompt: str) -> str:
     """

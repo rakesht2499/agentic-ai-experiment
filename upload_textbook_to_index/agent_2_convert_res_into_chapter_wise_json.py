@@ -5,8 +5,8 @@ import tempfile
 from google.cloud import storage
 
 INPUT_FOLDER = "output"  # local folder after download
-LOCAL_OUTPUT_FILE = "class10_english.jsonl"  # Changed to .jsonl
-GCS_OUTPUT_URI = f"gs://shahayak-agentic-ai-gpl-muskeeters/json/cbse/class10/english/{LOCAL_OUTPUT_FILE}"  # Changed to .jsonl
+LOCAL_OUTPUT_FILE = "class10_science.jsonl"  # Changed to .jsonl
+GCS_OUTPUT_URI = f"gs://shahayak-agentic-ai-gpl-muskeeters/json/cbse/class10/science/{LOCAL_OUTPUT_FILE}"  # Changed to .jsonl
 PROJECT_ID = "rag-engine-vertex-ai-project"
 
 
@@ -79,7 +79,7 @@ def convert_docai_to_rag_format(input_folder, output_file, temp_content_dir):
 
                         for i, chunk in enumerate(content_chunks):
                             # Create a unique ID for the chunk
-                            chunk_id = f"cbse_class10_english_ch{chapter_number}_chunk{i + 1}"
+                            chunk_id = f"cbse_class10_science_ch{chapter_number}_chunk{i + 1}"
                             content_filename = f"{chunk_id}.txt"
                             local_content_path = os.path.join(temp_content_dir, content_filename)
 
@@ -88,13 +88,13 @@ def convert_docai_to_rag_format(input_folder, output_file, temp_content_dir):
                                 content_f.write(chunk)
 
                             rag_doc = {
-                                "id": f"cbse_class10_english_ch{chapter_number}_chunk{i+1}",
-                                "source": "CBSE_Class10_English",
+                                "id": f"cbse_class10_science_ch{chapter_number}_chunk{i+1}",
+                                "source": "CBSE_Class10_science",
                                 "title": chapter_title,
                                 "content": chunk,
                                 "metadata": {
                                     "chapter": f"Chapter {chapter_number}",
-                                    "subject": "English",
+                                    "subject": "Science",
                                     "board": "CBSE",
                                     "class": "10"
                                 }

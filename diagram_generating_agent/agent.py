@@ -1,16 +1,10 @@
-import os
 import uuid
 from google.adk.agents import LlmAgent
 from google.adk.tools import agent_tool
 from pydantic import BaseModel, Field
-import graphviz
 
 from vertexai.generative_models import GenerativeModel
 from vertexai.preview.vision_models import ImageGenerationModel
-
-# --- Set environment variables for Google Cloud ---
-os.environ["GOOGLE_CLOUD_PROJECT"] = "image-generation-sahayak"
-os.environ["GOOGLE_CLOUD_LOCATION"] = "us-central1"
 
 prompt_for_refining_agent = """
 ## Instructions for the "Prompt Refinement Agent"
@@ -170,7 +164,7 @@ Your job is to ensure the response is suitable for generating a diagram using Gr
 
 """
     try:
-        model = GenerativeModel("gemini-1.5-pro-preview-0409")
+        model = GenerativeModel("ggemini")
         response = model.generate_content(system_instruction)
         print(f"LLM Response: {response.text}")
         return response.text.strip()
@@ -187,28 +181,8 @@ def generate_diagram(prompt: str) -> str:
     print(f"--- TOOL: Received prompt: '{prompt}' ---")
 
     try:
-        # if any(kw in prompt.lower() for kw in ["diagram", "flowchart", "cycle", "process"]):
-        #     print("--- TOOL: Detected DIAGRAM prompt. Using Graphviz. ---")
-        #     dot = graphviz.Digraph(comment="AutoDiagram")
-        #     dot.attr(rankdir="LR")  # Left to Right
-        #
-        #     # Try parsing flow steps if present
-        #     if "->" in prompt:
-        #         steps = [s.strip() for s in prompt.split("->")]
-        #         for i in range(len(steps) - 1):
-        #             dot.edge(steps[i], steps[i + 1])
-        #     else:
-        #         # Fallback example structure (can be improved per context)
-        #         dot.edge("Start", "Step 1")
-        #         dot.edge("Step 1", "Step 2")
-        #         dot.edge("Step 2", "End")
-        #
-        #     dot.render(outfile=output_filename, format='png', cleanup=True)
-        #     print(f"--- TOOL: Diagram saved to {output_filename} ---")
-        #     return f"Diagram successfully generated and saved to: {output_filename}"
-        # else:
         print("--- TOOL: Detected IMAGE prompt. Using Vertex AI ---")
-        model = ImageGenerationModel.from_pretrained("imagegeneration@006")
+        model = ImageGenerationModel.from_pretrained("imagen-4.0-ultra-generate-preview-06-06")
         seed = uuid.uuid4().int % (2 ** 32)
         print(f"Using seed: {seed}")
         response = model.generate_images(
@@ -251,28 +225,28 @@ class DiagramOrchestratorOutput(BaseModel):
 # --- Agents --- #
 prompt_validator_agent = LlmAgent(
     name="PromptValidatorAgent",
-    model="gemini-1.5-flash",
+    model="gemini-2.5-flash",
     instruction="Analyze the user's diagram prompt for clarity. If it's too vague (e.g., 'process flow'), set 'is_clear' to False and explain what context is missing.",
     output_schema=ValidatorOutput
 )
 
 reviewer_agent = LlmAgent(
     name="ReviewerAgent",
-    model="gemini-1.5-flash",
+    model="gemini-2.5-flash",
     instruction="Review the refined diagram prompt. If it's detailed and clear, set 'approved' to True. Otherwise, give concise feedback and set 'approved' to False.",
     output_schema=ReviewerOutput
 )
 
 prompt_refiner_agent = LlmAgent(
     name="PromptRefinerAgent",
-    model="gemini-1.5-flash",
+    model="gemini-2.5-flash",
     instruction=prompt_for_refining_agent,
     output_schema=RefinerOutput
 )
 
 diagram_generation_agent = LlmAgent(
     name="DiagramGenerationAgent",
-    model="gemini-1.5-flash",
+    model="gemini-2.5-flash",
     description="Generates a diagram and caption based on the final prompt.",
     instruction=prompt_for_flowchart_agent,
     tools=[generate_diagram],
