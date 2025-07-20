@@ -7,8 +7,8 @@ from dotenv import load_dotenv
 PROJECT_ID = "rag-engine-vertex-ai-project"
 LOCATION = "us-east1"  # or your processor’s region
 PROCESSOR_ID = "dcb5c77d0e43d45b"
-INPUT_GCS_URI = "gs://shahayak-agentic-ai-gpl-muskeeters/pdf/cbse/class10/science"
-OUTPUT_GCS_URI = "gs://shahayak-agentic-ai-gpl-muskeeters/json/cbse/class10/science"
+INPUT_GCS_URI = "gs://shahayak-agentic-ai-gpl-muskeeters/pdf/cbse/class10/english"
+OUTPUT_GCS_URI = "gs://shahayak-agentic-ai-gpl-muskeeters/json/cbse/class10/english"
 
 # Initialize clients
 storage_client = storage.Client(project=PROJECT_ID)

@@ -1,11 +1,8 @@
-from google.cloud import aiplatform
-from VertexAiMatchingEngine.constants import PROJECT_ID, REGION, INDEX_NAME
-import json
 from vertexai.language_models import TextEmbeddingModel
 from vertexai.preview.matching_engine import MatchingEngineIndexEndpoint, MatchingEngineIndex
 from google.cloud import storage
 from google.cloud.aiplatform.matching_engine import MatchingEngineClient
-from VertexAiMatchingEngine.constants import PROJECT_ID, LOCATION, INDEX_ID, BUCKET_NAME
+from old_and_only_for_reference.VertexAiMatchingEngine.constants import PROJECT_ID, LOCATION, INDEX_ID, BUCKET_NAME
 import json
 import uuid
 import vertexai

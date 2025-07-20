@@ -1,0 +1,19 @@
+# Google Vertex AI SDK
+google-cloud-aiplatform
+
+# Vertex AI Generative AI and RAG SDK
+google-generativeai>=0.5.4
+vertexai>=1.48.0
+
+# Google AI Development Kit (ADK) - latest preview tools
+google-adk>=0.1.5  # Adjust if pinned version used
+
+# Environment variable management
+python-dotenv>=1.0.0
+
+# Optional: For running on Python 3.10+
+protobuf>=4.25.1
+
+
+
+google-adk

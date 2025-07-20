@@ -1,6 +1,6 @@
 from google.cloud import aiplatform
 from vertexai.preview.language_models import TextEmbeddingModel
-from VertexAiMatchingEngine.constants import PROJECT_ID, REGION
+from old_and_only_for_reference.VertexAiMatchingEngine.constants import PROJECT_ID, REGION
 
 
 def query_index(query_text):

@@ -1,5 +1,5 @@
 from google.cloud import aiplatform
-from VertexAiMatchingEngine.constants import PROJECT_ID, REGION, INDEX_NAME, DIMENSIONS
+from old_and_only_for_reference.VertexAiMatchingEngine.constants import PROJECT_ID, REGION, INDEX_NAME, DIMENSIONS
 
 def create_index():
     aiplatform.init(project=PROJECT_ID, location=REGION)
