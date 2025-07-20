@@ -27,7 +27,7 @@ class SyllabusPlannerOutput(BaseModel):
 # 1. Scope Clarifier Agent
 scope_clarifier = LlmAgent(
     name="ScopeClarifierAgent",
-    model="gemini-1.5-flash",
+    model="gemini-2.5-flash",
     instruction="""
     Check if the provided scope ('Full Year', 'Exam Window', or 'Custom Range') and dates are valid and sufficient.
 
@@ -45,7 +45,7 @@ scope_clarifier = LlmAgent(
 # 2. Topic Fetcher Agent (RAG-based)
 rag_topic_fetcher = LlmAgent(
     name="RagAgent",
-    model="gemini-1.5-flash",
+    model="gemini-2.5-flash",
     instruction="""
     Fetch NCERT topics based on standard and subject.
     Output must be a clean list of topic titles, one per line.
@@ -57,7 +57,7 @@ rag_topic_fetcher = LlmAgent(
 # 3. Calendar Mapper Agent
 calendar_mapper = LlmAgent(
     name="CalendarMapperAgent",
-    model="gemini-1.5-flash",
+    model="gemini-2.5-flash",
     instruction="""
     Create a structured week-wise or date-wise calendar plan between 'start_date' and 'end_date'.
 
@@ -76,7 +76,7 @@ calendar_mapper = LlmAgent(
 # 4. Planner Refiner Agent
 planner_refiner = LlmAgent(
     name="PlannerRefinerAgent",
-    model="gemini-1.5-flash",
+    model="gemini-2.5-flash",
     instruction="""
     Suggest ONE improvement or personalization follow-up for the syllabus plan.
 

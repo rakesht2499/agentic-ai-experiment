@@ -25,7 +25,7 @@ class LessonPlanOutput(BaseModel):
 # 1. Input Validator Agent
 input_validator_agent = LlmAgent(
     name="InputValidatorAgent",
-    model="gemini-1.5-flash",
+    model="gemini-2.5-flash",
     instruction="""
     Validate the lesson planning input. If any of 'standard', 'subject', 'chapters', or 'timeframe' is missing,
     return validated=False with a meaningful refinement_question asking for the missing parts.
@@ -37,7 +37,7 @@ input_validator_agent = LlmAgent(
 # 2. RAG Agent
 rag_agent = LlmAgent(
     name="RagAgent",
-    model="gemini-1.5-flash",
+    model="gemini-2.5-flash",
     instruction="""
     You are connected to NCERT content. Compare the chapter list with official NCERT chapters for the given class and subject.
     Return only those chapters that are valid.
@@ -48,7 +48,7 @@ rag_agent = LlmAgent(
 # 3. Planner Composer Agent
 planner_composer_agent = LlmAgent(
     name="PlannerComposerAgent",
-    model="gemini-1.5-flash",
+    model="gemini-2.5-flash",
     instruction="""
     Generate a detailed lesson plan based on the chapters provided. Format as follows:
 
@@ -66,7 +66,7 @@ planner_composer_agent = LlmAgent(
 # 4. Refiner Agent
 refiner_agent = LlmAgent(
     name="RefinerAgent",
-    model="gemini-1.5-flash",
+    model="gemini-2.5-flash",
     instruction="""
     Ask a user-friendly follow-up question like:
     'Would you like to include hands-on experiments or group activities?'

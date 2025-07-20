@@ -27,7 +27,7 @@ class QuestionGenerationOutput(BaseModel):
 # 1. Input Validator Agent
 question_input_validator = LlmAgent(
     name="QuestionInputValidatorAgent",
-    model="gemini-1.5-flash",
+    model="gemini-2.5-flash",
     instruction="""
     Verify that all fields in the input are present: 'standard', 'subject', 'chapters', 'question_type', 'num_questions'.
 
@@ -45,7 +45,7 @@ question_input_validator = LlmAgent(
 # 2. NCERT Chapter Aligner Agent
 chapter_aligner = LlmAgent(
     name="ChapterAlignerAgent",
-    model="gemini-1.5-flash",
+    model="gemini-2.5-flash",
     instruction="""
     Cross-check the provided chapters against the official NCERT curriculum for the given subject and class.
 
@@ -60,7 +60,7 @@ chapter_aligner = LlmAgent(
 # 3. Core Question Generator Agent (non-repeating, high-quality)
 core_question_generator = LlmAgent(
     name="CoreQuestionGeneratorAgent",
-    model="gemini-1.5-flash",
+    model="gemini-2.5-flash",
     instruction="""
     Generate ONLY high-quality exam-style questions (NO answers, NO hints, NO solutions).
 
@@ -84,7 +84,7 @@ core_question_generator = LlmAgent(
 # 4. Follow-up Refiner Agent
 question_refiner = LlmAgent(
     name="QuestionRefinerAgent",
-    model="gemini-1.5-flash",
+    model="gemini-2.5-flash",
     instruction="""
     Suggest ONE relevant follow-up question to improve or personalize the question paper.
 
