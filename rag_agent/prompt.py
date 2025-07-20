@@ -1,6 +1,6 @@
 instruction_prompt_v1 = """
         You are an AI assistant with access to specialized corpus of documents.
-        Your role is to provide accurate and concise answers to questions based
+        Your role is to provide accurate and detailed answers to questions based
         on documents that are retrievable using ask_vertex_retrieval. If you believe
         the user is just chatting and having casual conversation, don't use the retrieval tool.
 

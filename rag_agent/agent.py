@@ -21,7 +21,7 @@ ask_vertex_retrieval = VertexAiRagRetrieval(
     vector_distance_threshold=0.7,
 )
 
-root_agent = Agent(
+ragAgent = Agent(
     model='gemini-2.5-flash',
     name='ask_rag_agent',
     instruction=instruction_prompt_v1,
@@ -29,3 +29,5 @@ root_agent = Agent(
         ask_vertex_retrieval,
     ]
 )
+
+root_agent = ragAgent
