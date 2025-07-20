@@ -19,9 +19,10 @@ google-cloud-aiplatform = {extras = ["adk", "agent_engines"], version = "^1.91.0
 absl-py = "^2.1.0"
 cloudpickle = "^3.0.0"
 llama-index = "0.10.39"
+deprecated = "^1.2.14"
 
 [tool.poetry.scripts]
-adk-short-bot = "adk_short_bot:app"
+shahayak-agent = "shahayak-agent:app"
 deploy-local = "deployment.local:main"
 deploy-remote = "deployment.remote:main"
 cleanup = "deployment.cleanup:cleanup_deployment"
