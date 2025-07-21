@@ -6,9 +6,7 @@ from google.adk.tools import agent_tool
 
 from models.constants import GEMINI_FLASH_MODEL, GEMINI_PRO_MODEL
 
-# --- Environment Setup ---
-os.environ["GOOGLE_CLOUD_PROJECT"] = "image-generation-sahayak"
-os.environ["GOOGLE_CLOUD_LOCATION"] = "us-central1"
+from exam_generating_agent.prompts import instructions_for_question_input_validator
 
 # --- Input and Output Schemas --- #
 class QuestionGenerationInput(BaseModel):
@@ -30,17 +28,7 @@ class QuestionGenerationOutput(BaseModel):
 question_input_validator = LlmAgent(
     name="QuestionInputValidatorAgent",
     model=GEMINI_FLASH_MODEL,
-    instruction="""
-    Verify that all fields in the input are present: 'standard', 'subject', 'chapters', 'question_type', 'num_questions'.
-
-    If any field is missing or unclear, return:
-      - validated = False
-      - refinement_question = Ask clearly and politely what is missing.
-
-    If input is complete, return:
-      - validated = True
-      - refinement_question = ""
-    """,
+    instruction=instructions_for_question_input_validator,
     output_schema=QuestionGenerationOutput
 )
 
@@ -92,7 +80,6 @@ question_refiner = LlmAgent(
 
     Examples:
     - Would you like to specify difficulty levels?
-    - Should I tag Bloom's taxonomy levels for each question?
     - Do you want marking scheme or CBSE pattern format?
 
     Only populate `refinement_question`. Leave other fields empty.
@@ -132,5 +119,4 @@ root_agent = LlmAgent(
         agent_tool.AgentTool(agent=core_question_generator),
         agent_tool.AgentTool(agent=question_refiner)
     ],
-    # output_schema=QuestionGenerationOutput
 )

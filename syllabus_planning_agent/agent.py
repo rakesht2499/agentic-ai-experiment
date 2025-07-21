@@ -6,10 +6,6 @@ from google.adk.tools import agent_tool
 
 from models.constants import GEMINI_PRO_MODEL
 
-# --- Environment Setup ---
-os.environ["GOOGLE_CLOUD_PROJECT"] = "image-generation-sahayak"
-os.environ["GOOGLE_CLOUD_LOCATION"] = "us-central1"
-
 # --- Input and Output Schemas --- #
 class SyllabusPlannerInput(BaseModel):
     standard: str = Field(..., description="e.g., '10' for Class 10")
