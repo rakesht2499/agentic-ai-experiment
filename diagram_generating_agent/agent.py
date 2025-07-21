@@ -7,6 +7,7 @@ from vertexai.generative_models import GenerativeModel
 from vertexai.preview.vision_models import ImageGenerationModel
 
 from models.constants import GEMINI_PRO_MODEL
+from q_and_a_agent.agent import root_agent
 
 prompt_for_refining_agent = """
 ## Instructions for the "Prompt Refinement Agent"
@@ -255,7 +256,7 @@ diagram_generation_agent = LlmAgent(
     # output_schema=DiagramFinalAnswer
 )
 
-root_agent = LlmAgent(
+flowchart_agent = LlmAgent(
     name="diagram_generating_agent",
     model=GEMINI_PRO_MODEL,
     description="Controls the end-to-end diagram generation pipeline.",
@@ -274,6 +275,8 @@ root_agent = LlmAgent(
     ],
     # output_schema=DiagramOrchestratorOutput
 )
+
+root_agent=flowchart_agent
 
 # --- Optional test run --- #
 # if __name__ == "__main__":

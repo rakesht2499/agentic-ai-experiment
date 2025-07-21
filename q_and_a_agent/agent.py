@@ -4,7 +4,7 @@ from google.adk.tools import agent_tool, ToolContext
 
 from models.constants import GEMINI_FLASH_MODEL
 from q_and_a_agent.prompts import instruction_prompt_for_qanda, instruction_prompt_subject_extractor
-from rag_agent.agent import ragAgent
+from rag_agent.agent import rag_agent
 
 
 class NoHistoryAgent(LlmAgent):
@@ -37,7 +37,7 @@ subject_extractor = NoHistoryAgent(
 ragAgent = NoHistoryAgent(
     name="q_and_a_agent",
     model=GEMINI_FLASH_MODEL,
-    tools=[agent_tool.AgentTool(agent=ragAgent)],
+    tools=[agent_tool.AgentTool(agent=rag_agent)],
     instruction=instruction_prompt_for_qanda,
 )
 

@@ -6,6 +6,7 @@ from google.adk.tools import agent_tool
 
 from exam_generating_agent.agent import root_agent as exam_generating_agent
 from lesson_planning_agent.agent import root_agent as lesson_planning_agent
+from q_and_a_orchastrator_agent.agent import qna_orchestrator_agent
 from syllabus_planning_agent.agent import root_agent as syllabus_planning_agent
 from q_and_a_agent.agent import root_agent as q_and_a_agent
 from diagram_generating_agent.agent import root_agent as diagram_generating_agent
@@ -214,7 +215,7 @@ root_agent = LlmAgent(
     instruction=instruction_prompt_root_agent,
     tools=[
         analyze_modalities,
-        createToolFromAgent(q_and_a_agent),
+        createToolFromAgent(qna_orchestrator_agent),
         createToolFromAgent(diagram_generating_agent),
         createToolFromAgent(image_generating_agent),
         createToolFromAgent(exam_generating_agent),

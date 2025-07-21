@@ -1,19 +1,11 @@
 import os
 import uuid
-from google.adk.agents import LlmAgent
-from google.adk.tools import agent_tool
+from google.adk.agents import LlmAgent, SequentialAgent, LoopAgent
 from pydantic import BaseModel, Field
-from typing import TypedDict
 
-# ### --- NEW SECTION: Imports for real image and diagram generation --- ###
 from vertexai.preview.vision_models import ImageGenerationModel
-import graphviz
-
 from models.constants import GEMINI_FLASH_MODEL
 
-
-# --- Configuration for Vertex AI --- ###
-# ### --- CHANGED SECTION: The new, powerful tool that replaces the dummy one --- ###
 def generate_visual_content(prompt: str) -> str:
     """
     Generates a visual asset based on the prompt.
@@ -23,24 +15,6 @@ def generate_visual_content(prompt: str) -> str:
     """
     output_filename = f"output_{uuid.uuid4()}.png"
     print(f"--- TOOL: Received prompt: '{prompt}' ---")
-
-    # Decision logic: Diagram or Image?
-    # if any(keyword in prompt.lower() for keyword in ["diagram", "flowchart", "cycle"]):
-    #     print("--- TOOL: Detected diagram request. Using Graphviz. ---")
-    #     try:
-    #         # Simple example for the water cycle
-    #         dot = graphviz.Digraph('WaterCycle', comment='The Water Cycle')
-    #         dot.edge('Ocean', 'Evaporation')
-    #         dot.edge('Evaporation', 'Condensation (Clouds)')
-    #         dot.edge('Condensation (Clouds)', 'Precipitation')
-    #         dot.edge('Precipitation', 'Collection (Ocean)')
-    #         dot.render(outfile=output_filename, format='png', view=False, cleanup=True)
-    #         print(f"--- TOOL: Diagram saved to {output_filename} ---")
-    #         return f"Diagram successfully generated and saved to: {output_filename}"
-    #     except Exception as e:
-    #         return f"Failed to generate diagram: {e}"
-    # else:
-    print("--- TOOL: Detected image request. Using Vertex AI Imagen. ---")
     try:
         # Initialize Vertex AI client
         model = ImageGenerationModel.from_pretrained("imagegeneration@006")
@@ -58,47 +32,38 @@ def generate_visual_content(prompt: str) -> str:
     except Exception as e:
         return f"Failed to generate image from Vertex AI: {e}"
 
-# --- Agent Type Definitions (using Pydantic) ---
-
-class FinalAnswer(BaseModel):
-    image_result: str = Field(description="File path of the generated image.")
-    caption: str = Field(description="Descriptive caption for the generated image.")
-
-class ValidatorOutput(BaseModel):
-    is_clear: bool = Field(description="Indicates whether the prompt is clear enough.")
-    feedback: str = Field(description="Feedback or suggestions to improve the prompt.")
-
-class RefinerOutput(BaseModel):
-    refined_prompt: str = Field(description="The improved version of the user's prompt.")
-
-class ReviewerOutput(BaseModel):
-    approved: bool = Field(description="Whether the prompt is good enough to proceed.")
-    feedback: str = Field(description="Specific comments for improvement.")
-
-# --- Agent Definitions ---
-
-# 1. PromptValidatorAgent
-prompt_validator_agent = LlmAgent(
-    name="PromptValidatorAgent",
-    model=GEMINI_FLASH_MODEL,
-    instruction="Analyze the user's prompt for clarity (subject, context, elements). If ambiguous (e.g., 'the water cycle'), set 'is_clear' to False and provide feedback on what's missing.",
-    output_schema=ValidatorOutput
-)
-
 # 2. ReviewerAgent
 reviewer_agent = LlmAgent(
     name="ReviewerAgent",
     model=GEMINI_FLASH_MODEL,
     instruction="Review the refined prompt. If it is now sufficiently detailed, set 'approved' to True. Otherwise, set 'approved' to False and give concise feedback.",
-    output_schema=ReviewerOutput
 )
 
 # 3. PromptRefinerAgent
 prompt_refiner_agent = LlmAgent(
     name="PromptRefinerAgent",
     model=GEMINI_FLASH_MODEL,
-    instruction="Receive a prompt and feedback. Generate a 'refined_prompt' that is either a direct suggestion or a clarifying question to the user.",
-    output_schema=RefinerOutput
+    instruction="""
+    Receive a prompt and feedback. Your primary goal is to generate a highly elaborated and exceptionally detailed 'refined_prompt' that is specifically tailored for rigorous educational purposes.
+
+    **Strict Instructions for Educational Image Generation:**
+    1.  **Contextual Understanding & Educational Goal:** Analyze the original prompt meticulously to grasp its core subject, the specific learning objectives it aims to support, and the intended educational level (e.g., elementary, high school, university).
+    2.  **Educational Suitability & Safety (Non-Negotiable):** The refined prompt MUST ensure the generated image is **absolutely appropriate, exceptionally clear, and maximally beneficial** for teachers and students learning about the subject. **Under no circumstances** should the image contain elements that could be perceived as scary, confusing, misleading, or graphically disturbing. Prioritize simplicity and clarity over excessive realism if the latter compromises educational value.
+    3.  **Comprehensive Elaboration and Granular Detail:** Expand the prompt significantly, integrating comprehensive descriptive elements that will meticulously guide the image generation model to create an accurate, highly informative, and visually captivating representation. Consider and include details about:
+        -   **Specific Key Components/Elements:** List all essential parts, structures, or concepts that must be clearly visible and distinguishable.
+        -   **Visual Style & Aesthetic:** Define the desired artistic approach (e.g., "anatomically accurate diagram," "schematic illustration with bold lines," "realistic photographic quality," "simplified cartoon for young learners," "cross-sectional view," "exploded view"). Specify color palettes (e.g., "vibrant and distinct colors," "naturalistic tones," "pastel shades"), lighting (e.g., "bright, even illumination," "soft studio lighting"), and texture.
+        -   **Composition & Perspective:** Detail the exact viewpoint (e.g., "anterior view," "lateral cross-section," "overview from a slight angle," "close-up on specific organ"). Specify framing (e.g., "full body," "focused on a particular region").
+        -   **Context & Environment:** If applicable, describe the surrounding environment or background to provide context without distracting from the main subject (e.g., "sterile laboratory background," "natural habitat," "against a plain white backdrop for clarity").
+        -   **Educational Enhancements & Labeling:** Emphasize the need for:
+            -   **Clear, Legible Labeling:** Specify if labels should be integrated directly, or if the image should be designed for subsequent labeling (e.g., "clearly defined regions for future labeling," "numbered components corresponding to a legend").
+            -   **Simplified Views:** Indicate if complex subjects should be presented in a simplified, pedagogical manner.
+            -   **High Resolution & Print Quality:** Ensure the image will be suitable for projection or printing.
+            -   **Elimination of Distractions:** Explicitly state that background clutter or distracting elements should be avoided.
+            -   **Inclusion of Scale/Proportion:** If relevant, suggest elements that convey size or scale.
+    4.  **Exemplary Detail (for "human nervous system"):**
+        "Generate a highly detailed, pedagogically optimized anatomical illustration of the complete human nervous system. The image should feature a clear anterior view of a human figure, with the brain, spinal cord, and all major peripheral nerves distinctly visible and accurately proportioned. Employ a **schematic yet realistic rendering style**, utilizing **vibrant, contrasting colors** to differentiate between the central nervous system (brain, spinal cord) and the peripheral nervous system, as well as distinct nerve branches. The illumination should be **bright and even**, ensuring no shadows obscure any part. The background must be a **clean, pure white** to maximize clarity and focus on the anatomy. The illustration should be designed for a **university-level anatomy textbook**, with **clearly demarcated regions suitable for subsequent labeling** by students. Absolutely no elements that could be perceived as morbid, clinical, or overly graphic should be present. The overall impression should be one of **scientific precision, accessibility, and clean educational utility.**"
+    5.  **Direct Suggestion:** The output 'refined_prompt' should be a comprehensive, self-contained prompt ready for direct input to the image generation tool.
+    """,
 )
 
 # ### --- CHANGED SECTION: The ImageGenerationAgent now uses the new tool --- ###
@@ -115,7 +80,6 @@ image_generation_agent = LlmAgent(
     tools=[generate_visual_content]
 )
 
-
 # --- Main Orchestrator Agent ---
 # ### --- CHANGED SECTION: Updated instructions and output schema for the orchestrator --- ###
 class OrchestratorOutput(BaseModel):
@@ -123,27 +87,11 @@ class OrchestratorOutput(BaseModel):
     image_file_path: str = Field(description="The local file path of the generated image.")
     final_caption: str = Field(description="The final caption for the image.")
 
-root_agent = LlmAgent(
+root_agent = SequentialAgent(
     name="image_generating_agent",
-    model=GEMINI_FLASH_MODEL,
-    description="Orchestrates the entire image generation flow from prompt validation to final output.",
-    instruction="""
-    You are an orchestrator for a visual content pipeline.
-    Follow these steps:
-    1.  Call `PromptValidatorAgent` with the initial prompt.
-    2.  If the prompt is not clear, enter a loop (max 3 times):
-        a. Call `PromptRefinerAgent` with the prompt and feedback.
-        b. Call `ReviewerAgent` with the newly refined prompt.
-        c. If the reviewer approves, exit the loop. Otherwise, use the new feedback for the next iteration.
-    3.  Once a prompt is approved (or the loop finishes), call `ImageGenerationAgent` with the final prompt.
-    4.  Extract the file path and caption from the result.
-    5.  Return the final prompt, the image file path, and the caption as the final answer.
-    """,
-    # output_schema=OrchestratorOutput,
-    tools=[
-        agent_tool.AgentTool(agent=prompt_validator_agent),
-        agent_tool.AgentTool(agent=reviewer_agent),
-        agent_tool.AgentTool(agent=prompt_refiner_agent),
-        agent_tool.AgentTool(agent=image_generation_agent),
-    ],
+    sub_agents=[
+        prompt_refiner_agent,
+        reviewer_agent,
+        image_generation_agent,
+    ]
 )
