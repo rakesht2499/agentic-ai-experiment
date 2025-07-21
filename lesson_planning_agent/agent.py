@@ -3,7 +3,6 @@ import uuid
 from typing import List
 from pydantic import BaseModel, Field
 from google.adk.agents import LlmAgent
-from google.adk.tools import agent_tool
 from google.adk.agents import SequentialAgent, ParallelAgent
 
 from models.constants import GEMINI_FLASH_MODEL
@@ -84,26 +83,14 @@ formatter_agent = LlmAgent(
 
 
 # --- Root Agent: Lesson Planner Orchestrator --- #
-root_agent = SequentialAgent(
+lesson_planning_agent = SequentialAgent(
     name="lesson_planning_agent",
-    # model=GEMINI_PRO_MODEL,
     description="Interactive lesson planning agent with NCERT alignment and multimodal guidance",
-    # instruction="""
-    # Step-by-step plan:
-    # 1. Call InputValidatorAgent to check and confirm user inputs.
-    # 2. If input is invalid, return refinement_question to user and stop.
-    # 3. Call RagAgent to align chapters with NCERT syllabus.
-    # 4. Call PlannerComposerAgent to generate the lesson plan.
-    # 5. Call RefinerAgent to generate a follow-up question.
-    # Finally, return:
-    # - validated input status,
-    # - aligned chapters,
-    # - lesson plan text,
-    # - refinement question
-    # """,
     sub_agents=[
         input_validator_agent,
         post_validation_parallel_agent,
         formatter_agent
     ],
 )
+
+root_agent = lesson_planning_agent

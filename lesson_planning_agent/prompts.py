@@ -9,7 +9,8 @@ input_validator_prompt = """
     2. If any fields are missing, **ask the user once about these additional fields** which will help you to generate better results, ***only then assume reasonable defaults**:
        - If 'standard' or 'grade' is missing, assume Class 5.
        - If 'subject' is missing, assume 'Science'.
-       - If 'timeframe' is missing, assume '1 week'.
+       - If 'timeframe' is missing, assume '2 week'.
+       - Week is only of 5 days excluding Saturday and Sunday.
        - If 'chapters' are missing or unclear, proceed with a generic placeholder like "Chapter 1".
 
     3. Always return `validated=True` so downstream agents can continue processing, even with limited input.
@@ -94,6 +95,11 @@ Your job is to:
     - Aligned Chapters (as a bullet list)
     - A structured and engaging lesson plan
     - Final notes or suggestions
+    
+Important notes:
+1. Make sure that you return the plan that you have created. Don't dare to omit it. You must return it and it shouldn't be that the user has to ask for it
+2. Maintain track of the user inputs provided earlier. Don't ask the inputs which are already provided.
+3. Don't ask more than 3 clarification questions to the user and generate the plan with the information provided.
 
 Return only the formatted lesson output. Make it clean and helpful.
 Also include a closing line asking the teacher for any enhancements in the plan.
