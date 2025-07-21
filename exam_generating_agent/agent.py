@@ -3,10 +3,7 @@ from typing import List
 from pydantic import BaseModel, Field
 from google.adk.agents import LlmAgent
 from google.adk.tools import agent_tool
-
-# --- Environment Setup ---
-os.environ["GOOGLE_CLOUD_PROJECT"] = "image-generation-sahayak"
-os.environ["GOOGLE_CLOUD_LOCATION"] = "us-central1"
+from exam_generating_agent.prompts import instructions_for_question_input_validator
 
 # --- Input and Output Schemas --- #
 class QuestionGenerationInput(BaseModel):
@@ -27,18 +24,8 @@ class QuestionGenerationOutput(BaseModel):
 # 1. Input Validator Agent
 question_input_validator = LlmAgent(
     name="QuestionInputValidatorAgent",
-    model="gemini-2.5-flash",
-    instruction="""
-    Verify that all fields in the input are present: 'standard', 'subject', 'chapters', 'question_type', 'num_questions'.
-
-    If any field is missing or unclear, return:
-      - validated = False
-      - refinement_question = Ask clearly and politely what is missing.
-
-    If input is complete, return:
-      - validated = True
-      - refinement_question = ""
-    """,
+    model="gemini-2.5-flash", # Flash is good for quick validation
+    instruction=instructions_for_question_input_validator,
     output_schema=QuestionGenerationOutput
 )
 
@@ -90,7 +77,6 @@ question_refiner = LlmAgent(
 
     Examples:
     - Would you like to specify difficulty levels?
-    - Should I tag Bloom's taxonomy levels for each question?
     - Do you want marking scheme or CBSE pattern format?
 
     Only populate `refinement_question`. Leave other fields empty.
@@ -130,5 +116,4 @@ root_agent = LlmAgent(
         agent_tool.AgentTool(agent=core_question_generator),
         agent_tool.AgentTool(agent=question_refiner)
     ],
-    # output_schema=QuestionGenerationOutput
 )

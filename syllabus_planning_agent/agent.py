@@ -4,10 +4,6 @@ from pydantic import BaseModel, Field
 from google.adk.agents import LlmAgent
 from google.adk.tools import agent_tool
 
-# --- Environment Setup ---
-os.environ["GOOGLE_CLOUD_PROJECT"] = "image-generation-sahayak"
-os.environ["GOOGLE_CLOUD_LOCATION"] = "us-central1"
-
 # --- Input and Output Schemas --- #
 class SyllabusPlannerInput(BaseModel):
     standard: str = Field(..., description="e.g., '10' for Class 10")
