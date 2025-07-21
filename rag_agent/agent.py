@@ -13,44 +13,44 @@ from .prompt import instruction_prompt_v1
 
 load_dotenv()
 
-vertexai.init(project=os.getenv("GOOGLE_CLOUD_PROJECT"), location="us-central1")
-
-embedding_model_config = rag.RagEmbeddingModelConfig(
-    vertex_prediction_endpoint=rag.VertexPredictionEndpoint(
-        publisher_model="publishers/google/models/text-embedding-004"
-    )
-)
-
-vertexai.init(project=PROJECT_ID, location="us-central1")
-
-rag_retrieval_tool = Tool.from_retrieval(
-    retrieval=rag.Retrieval(
-        source=rag.VertexRagStore(
-            rag_resources=[
-                rag.RagResource(
-                    rag_corpus=corpus_name,
-                    # Optional: supply IDs from `rag.list_files()`.
-                    # rag_file_ids=["rag-file-1", "rag-file-2", ...],
-                )
-            ],
-            rag_retrieval_config=rag.RagRetrievalConfig(
-                top_k=10,
-                filter=rag.utils.resources.Filter(vector_distance_threshold=0.5),
-            ),
-        ),
-    )
-)
-
-rag_model = GenerativeModel(
-    model_name="gemini-2.0-flash-001", tools=[rag_retrieval_tool]
-)
-response = rag_model.generate_content("Why is the sky blue?")
+# vertexai.init(project=os.getenv("GOOGLE_CLOUD_PROJECT"), location="us-central1")
+#
+# embedding_model_config = rag.RagEmbeddingModelConfig(
+#     vertex_prediction_endpoint=rag.VertexPredictionEndpoint(
+#         publisher_model="publishers/google/models/text-embedding-004"
+#     )
+# )
+#
+# vertexai.init(project=PROJECT_ID, location="us-central1")
+#
+# rag_retrieval_tool = Tool.from_retrieval(
+#     retrieval=rag.Retrieval(
+#         source=rag.VertexRagStore(
+#             rag_resources=[
+#                 rag.RagResource(
+#                     rag_corpus=corpus_name,
+#                     # Optional: supply IDs from `rag.list_files()`.
+#                     # rag_file_ids=["rag-file-1", "rag-file-2", ...],
+#                 )
+#             ],
+#             rag_retrieval_config=rag.RagRetrievalConfig(
+#                 top_k=10,
+#                 filter=rag.utils.resources.Filter(vector_distance_threshold=0.5),
+#             ),
+#         ),
+#     )
+# )
+#
+# rag_model = GenerativeModel(
+#     model_name="gemini-2.0-flash-001", tools=[rag_retrieval_tool]
+# )
+# response = rag_model.generate_content("Why is the sky blue?")
 #
 # rag_retrieval_config = rag.RagRetrievalConfig(
 #     top_k=10,
 #     filter=rag.Filter(metadata_filter='subject="Science" AND class="10"'),  # Optional
 # )
-#
+# 
 # response = rag.retrieval_query(
 #     rag_resources=[
 #         rag.RagResource(
@@ -66,19 +66,19 @@ response = rag_model.generate_content("Why is the sky blue?")
 
 
 
-# ask_vertex_retrieval = VertexAiRagRetrieval(
-#     name='retrieve_rag_documentation',
-#     description=(
-#         'Use this tool to retrieve documentation and reference materials for the question from the RAG corpus,'
-#     ),
-#     rag_resources=[
-#         rag.RagResource(
-#             rag_corpus="projects/rag-engine-vertex-ai-project/locations/us-central1/ragCorpora/5037276183213899776"
-#         )
-#     ],
-#     similarity_top_k=5,
-#     vector_distance_threshold=0.7,
-# )
+ask_vertex_retrieval = VertexAiRagRetrieval(
+    name='retrieve_rag_documentation',
+    description=(
+        'Use this tool to retrieve documentation and reference materials for the question from the RAG corpus,'
+    ),
+    rag_resources=[
+        rag.RagResource(
+            rag_corpus="projects/rag-engine-vertex-ai-project/locations/us-central1/ragCorpora/5037276183213899776"
+        )
+    ],
+    similarity_top_k=5,
+    vector_distance_threshold=0.7,
+)
 
 ragAgent = Agent(
     model=GEMINI_PRO_MODEL,
