@@ -1,5 +1,6 @@
 import os
 
+import nltk
 import vertexai
 from dotenv import load_dotenv
 from vertexai import agent_engines
@@ -13,6 +14,11 @@ if __name__ == "__main__":
     location = os.getenv("GOOGLE_CLOUD_LOCATION")
     bucket = os.getenv("GOOGLE_CLOUD_STAGING_BUCKET")
 
+    try:
+        nltk.data.find("tokenizers/punkt")
+    except LookupError:
+        nltk.download("punkt")
+
     vertexai.init(
         project=project_id,
         location=location,
@@ -23,18 +29,16 @@ if __name__ == "__main__":
         display_name="Shahayak 2.0 - test 1",
         agent_engine=root_agent,
         requirements=[
-            "google-cloud-aiplatform[adk,agent_engines]>=1.91.0",
-            "google-adk==0.5.0",
+            "google-cloud-aiplatform[adk,agent_engines]==1.104.0",
+            "google-adk==1.7.0",
             "python-dotenv==1.1.0",
-            "requests==2.31.0",
+            "requests>=2.32.4",
             "pydantic==2.11.3",
             "absl-py==2.1.0",
             "cloudpickle==3.0.0",
             "llama-index==0.10.39",
-            "deprecated>=1.2.14"
-            # "protobuf>=5.29.5",
-            # "nltk>=3.9.1",
-            # "graphviz>=0.21"
+            "deprecated>=1.2.14",
+            "nltk>=3.8.1"
         ],
         extra_packages=[
             "./shahayak_agent",

@@ -2,6 +2,7 @@ from google.adk.agents import LlmAgent, SequentialAgent
 from google.adk.models import LlmRequest
 from google.adk.tools import agent_tool, ToolContext
 
+from models.constants import GEMINI_FLASH_MODEL
 from q_and_a_agent.prompts import instruction_prompt_for_qanda, instruction_prompt_subject_extractor
 from rag_agent.agent import ragAgent
 
@@ -28,14 +29,14 @@ class NoHistoryAgent(LlmAgent):
 
 subject_extractor = NoHistoryAgent(
     name="subject_extractor_agent",
-    model="gemini-2.5-flash",
+    model=GEMINI_FLASH_MODEL,
     instruction=instruction_prompt_subject_extractor,
     output_key="refined_topic_query_for_rag_retrieval",
 )
 
 ragAgent = NoHistoryAgent(
     name="q_and_a_agent",
-    model="gemini-2.5-flash",
+    model=GEMINI_FLASH_MODEL,
     tools=[agent_tool.AgentTool(agent=ragAgent)],
     instruction=instruction_prompt_for_qanda,
 )

@@ -4,6 +4,8 @@ from pydantic import BaseModel, Field
 from google.adk.agents import LlmAgent
 from google.adk.tools import agent_tool
 
+from models.constants import GEMINI_PRO_MODEL
+
 # --- Environment Setup ---
 os.environ["GOOGLE_CLOUD_PROJECT"] = "image-generation-sahayak"
 os.environ["GOOGLE_CLOUD_LOCATION"] = "us-central1"
@@ -27,7 +29,7 @@ class SyllabusPlannerOutput(BaseModel):
 # 1. Scope Clarifier Agent
 scope_clarifier = LlmAgent(
     name="ScopeClarifierAgent",
-    model="gemini-1.5-flash",
+    model=GEMINI_PRO_MODEL,
     instruction="""
     Check if the provided scope ('Full Year', 'Exam Window', or 'Custom Range') and dates are valid and sufficient.
 
@@ -45,7 +47,7 @@ scope_clarifier = LlmAgent(
 # 2. Topic Fetcher Agent (RAG-based)
 rag_topic_fetcher = LlmAgent(
     name="RagAgent",
-    model="gemini-1.5-flash",
+    model=GEMINI_PRO_MODEL,
     instruction="""
     Fetch NCERT topics based on standard and subject.
     Output must be a clean list of topic titles, one per line.
@@ -57,7 +59,7 @@ rag_topic_fetcher = LlmAgent(
 # 3. Calendar Mapper Agent
 calendar_mapper = LlmAgent(
     name="CalendarMapperAgent",
-    model="gemini-1.5-flash",
+    model=GEMINI_PRO_MODEL,
     instruction="""
     Create a structured week-wise or date-wise calendar plan between 'start_date' and 'end_date'.
 
@@ -76,7 +78,7 @@ calendar_mapper = LlmAgent(
 # 4. Planner Refiner Agent
 planner_refiner = LlmAgent(
     name="PlannerRefinerAgent",
-    model="gemini-1.5-flash",
+    model=GEMINI_PRO_MODEL,
     instruction="""
     Suggest ONE improvement or personalization follow-up for the syllabus plan.
 
@@ -94,7 +96,7 @@ planner_refiner = LlmAgent(
 # --- Root Orchestrator Agent --- #
 root_agent = LlmAgent(
     name="syllabus_planner_agent",
-    model="gemini-2.5-pro",
+    model=GEMINI_PRO_MODEL,
     description="Calendar-based syllabus planner for NCERT classes",
     instruction="""
     Step-by-step behavior:

@@ -1,6 +1,7 @@
 from google.adk.agents import LlmAgent
 from google.adk.tools import agent_tool
 
+from models.constants import GEMINI_PRO_MODEL
 from q_and_a_agent.agent import root_agent as q_and_a_agent
 from diagram_generating_agent.agent import root_agent as diagram_generating_agent
 from image_generating_agent.agent import root_agent as image_generating_agent
@@ -106,7 +107,7 @@ User: "Generate an image of a teacher in a village classroom"
 
 root_agent = LlmAgent(
     name="shahayak_agent",
-    model="gemini-2.5-flash",
+    model=GEMINI_PRO_MODEL,
     instruction=instruction_prompt_root_agent,
     tools=[
         createToolFromAgent(q_and_a_agent),

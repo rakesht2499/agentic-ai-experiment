@@ -9,6 +9,9 @@ from typing import TypedDict
 from vertexai.preview.vision_models import ImageGenerationModel
 import graphviz
 
+from models.constants import GEMINI_FLASH_MODEL
+
+
 # --- Configuration for Vertex AI --- ###
 # ### --- CHANGED SECTION: The new, powerful tool that replaces the dummy one --- ###
 def generate_visual_content(prompt: str) -> str:
@@ -77,7 +80,7 @@ class ReviewerOutput(BaseModel):
 # 1. PromptValidatorAgent
 prompt_validator_agent = LlmAgent(
     name="PromptValidatorAgent",
-    model="gemini-1.5-flash",
+    model=GEMINI_FLASH_MODEL,
     instruction="Analyze the user's prompt for clarity (subject, context, elements). If ambiguous (e.g., 'the water cycle'), set 'is_clear' to False and provide feedback on what's missing.",
     output_schema=ValidatorOutput
 )
@@ -85,7 +88,7 @@ prompt_validator_agent = LlmAgent(
 # 2. ReviewerAgent
 reviewer_agent = LlmAgent(
     name="ReviewerAgent",
-    model="gemini-1.5-flash",
+    model=GEMINI_FLASH_MODEL,
     instruction="Review the refined prompt. If it is now sufficiently detailed, set 'approved' to True. Otherwise, set 'approved' to False and give concise feedback.",
     output_schema=ReviewerOutput
 )
@@ -93,7 +96,7 @@ reviewer_agent = LlmAgent(
 # 3. PromptRefinerAgent
 prompt_refiner_agent = LlmAgent(
     name="PromptRefinerAgent",
-    model="gemini-1.5-flash",
+    model=GEMINI_FLASH_MODEL,
     instruction="Receive a prompt and feedback. Generate a 'refined_prompt' that is either a direct suggestion or a clarifying question to the user.",
     output_schema=RefinerOutput
 )
@@ -101,7 +104,7 @@ prompt_refiner_agent = LlmAgent(
 # ### --- CHANGED SECTION: The ImageGenerationAgent now uses the new tool --- ###
 image_generation_agent = LlmAgent(
     name="ImageGenerationAgent",
-    model="gemini-1.5-flash",
+    model=GEMINI_FLASH_MODEL,
     description="Generates an image and caption from a final prompt.",
     instruction="""
     You will receive a final, refined prompt.
@@ -122,7 +125,7 @@ class OrchestratorOutput(BaseModel):
 
 root_agent = LlmAgent(
     name="image_generating_agent",
-    model="gemini-1.5-flash",
+    model=GEMINI_FLASH_MODEL,
     description="Orchestrates the entire image generation flow from prompt validation to final output.",
     instruction="""
     You are an orchestrator for a visual content pipeline.

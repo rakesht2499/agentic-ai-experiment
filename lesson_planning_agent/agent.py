@@ -5,6 +5,9 @@ from pydantic import BaseModel, Field
 from google.adk.agents import LlmAgent
 from google.adk.tools import agent_tool
 
+from models.constants import GEMINI_FLASH_MODEL, GEMINI_PRO_MODEL
+
+
 # --- Input and Output Models --- #
 class LessonPlanInput(BaseModel):
     standard: str = Field(..., description="e.g., '8' for Class 8")
@@ -25,7 +28,7 @@ class LessonPlanOutput(BaseModel):
 # 1. Input Validator Agent
 input_validator_agent = LlmAgent(
     name="InputValidatorAgent",
-    model="gemini-1.5-flash",
+    model=GEMINI_FLASH_MODEL,
     instruction="""
     Validate the lesson planning input. If any of 'standard', 'subject', 'chapters', or 'timeframe' is missing,
     return validated=False with a meaningful refinement_question asking for the missing parts.
@@ -37,7 +40,7 @@ input_validator_agent = LlmAgent(
 # 2. RAG Agent
 rag_agent = LlmAgent(
     name="RagAgent",
-    model="gemini-1.5-flash",
+    model=GEMINI_FLASH_MODEL,
     instruction="""
     You are connected to NCERT content. Compare the chapter list with official NCERT chapters for the given class and subject.
     Return only those chapters that are valid.
@@ -48,7 +51,7 @@ rag_agent = LlmAgent(
 # 3. Planner Composer Agent
 planner_composer_agent = LlmAgent(
     name="PlannerComposerAgent",
-    model="gemini-1.5-flash",
+    model=GEMINI_FLASH_MODEL,
     instruction="""
     Generate a detailed lesson plan based on the chapters provided. Format as follows:
 
@@ -66,7 +69,7 @@ planner_composer_agent = LlmAgent(
 # 4. Refiner Agent
 refiner_agent = LlmAgent(
     name="RefinerAgent",
-    model="gemini-1.5-flash",
+    model=GEMINI_FLASH_MODEL,
     instruction="""
     Ask a user-friendly follow-up question like:
     'Would you like to include hands-on experiments or group activities?'
@@ -78,7 +81,7 @@ refiner_agent = LlmAgent(
 # --- Root Agent: Lesson Planner Orchestrator --- #
 root_agent = LlmAgent(
     name="lesson_planner_agent",
-    model="gemini-2.5-pro",
+    model=GEMINI_PRO_MODEL,
     description="Interactive lesson planning agent with NCERT alignment and multimodal guidance",
     instruction="""
     Step-by-step plan:

@@ -6,6 +6,8 @@ from pydantic import BaseModel, Field
 from vertexai.generative_models import GenerativeModel
 from vertexai.preview.vision_models import ImageGenerationModel
 
+from models.constants import GEMINI_PRO_MODEL
+
 prompt_for_refining_agent = """
 ## Instructions for the "Prompt Refinement Agent"
 
@@ -164,7 +166,7 @@ Your job is to ensure the response is suitable for generating a diagram using Gr
 
 """
     try:
-        model = GenerativeModel("ggemini")
+        model = GenerativeModel("gemini-2.5-flash")
         response = model.generate_content(system_instruction)
         print(f"LLM Response: {response.text}")
         return response.text.strip()
@@ -255,7 +257,7 @@ diagram_generation_agent = LlmAgent(
 
 root_agent = LlmAgent(
     name="diagram_generating_agent",
-    model="gemini-2.5-pro",
+    model=GEMINI_PRO_MODEL,
     description="Controls the end-to-end diagram generation pipeline.",
     instruction="""
     You orchestrate a diagram-only generation flow. Here's the process:
