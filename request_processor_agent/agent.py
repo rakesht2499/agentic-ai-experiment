@@ -1,5 +1,4 @@
 import os
-from typing import Optional
 from pydantic import BaseModel, Field
 from google.adk.agents import LlmAgent
 from google.adk.tools import agent_tool
@@ -11,6 +10,8 @@ from syllabus_planning_agent.agent import root_agent as syllabus_planning_agent
 from q_and_a_agent.agent import root_agent as q_and_a_agent
 from diagram_generating_agent.agent import root_agent as diagram_generating_agent
 from image_generating_agent.agent import root_agent as image_generating_agent
+
+from models.constants import GEMINI_FLASH_MODEL
 
 
 def createToolFromAgent(agent):
@@ -169,52 +170,12 @@ class AnalyzeOutput(BaseModel):
     selected_tool: str = Field(..., description="Name of chosen downstream tool")
     rationale: str = Field(..., description="Brief reason for routing decision")
 
-def analyze_modalities(
-    text: Optional[str] = None,
-    image_base64: Optional[str] = None,
-    audio_base64: Optional[str] = None,
-    video_base64: Optional[str] = None
-) -> AnalyzeOutput:
-    # Strict rule-based routing
-    if text and ("mcq" in text.lower() or "question paper" in text.lower()):
-        return AnalyzeOutput(selected_tool="exam_generating_agent",
-                             rationale="Detected request for questions/MCQs in text")
-    if text and ("diagram" in text.lower() or "flowchart" in text.lower()):
-        return AnalyzeOutput(selected_tool="diagram_generating_agent",
-                             rationale="Detected diagram request in text")
-    if text and ("draw" in text.lower() or "generate an image" in text.lower()):
-        return AnalyzeOutput(selected_tool="image_generating_agent",
-                             rationale="Detected creative image request in text")
-    if text and ("plan" in text.lower() and "lesson" in text.lower()):
-        return AnalyzeOutput(selected_tool="lesson_planning_agent",
-                             rationale="Detected lesson planning request in text")
-    if text and ("syllabus" in text.lower() or "study plan" in text.lower()):
-        return AnalyzeOutput(selected_tool="syllabus_planning_agent",
-                             rationale="Detected syllabus planning in text")
-    if text:
-        return AnalyzeOutput(selected_tool="q_and_a_agent",
-                             rationale="Defaulting to Q&A for text-based query")
-
-    if image_base64:
-        # You could decode and inspect, but we use default fallback
-        return AnalyzeOutput(selected_tool="q_and_a_agent",
-                             rationale="Image provided — routing to Q&A or further analysis")
-
-    if audio_base64 or video_base64:
-        # Treat audio/video like text
-        return AnalyzeOutput(selected_tool="q_and_a_agent",
-                             rationale="Audio/video provided — routing to Q&A based on spoken query")
-
-    return AnalyzeOutput(selected_tool="q_and_a_agent",
-                         rationale="No input provided — default to Q&A")
-
 # --- Root Orchestration Agent ---
 root_agent = LlmAgent(
     name="request_processor_agent",
-    model="gemini-2.5-flash",
+    model=GEMINI_FLASH_MODEL,
     instruction=instruction_prompt_root_agent,
     tools=[
-        analyze_modalities,
         createToolFromAgent(qna_orchestrator_agent),
         createToolFromAgent(diagram_generating_agent),
         createToolFromAgent(image_generating_agent),
