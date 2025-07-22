@@ -3,12 +3,6 @@ from google.adk.tools import agent_tool
 
 from models.constants import GEMINI_PRO_MODEL
 from request_processor_agent.agent import root_agent as request_processor_root_agent
-from q_and_a_agent.agent import root_agent as q_and_a_agent
-from diagram_generating_agent.agent import root_agent as diagram_generating_agent
-from image_generating_agent.agent import root_agent as image_generating_agent
-
-from vertexai.preview import reasoning_engines
-from vertexai import agent_engines
 
 def createToolFromAgent(agent):
     return agent_tool.AgentTool(agent=agent)

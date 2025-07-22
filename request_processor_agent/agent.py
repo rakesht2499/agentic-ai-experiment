@@ -7,7 +7,6 @@ from exam_generating_agent.agent import root_agent as exam_generating_agent
 from lesson_planning_agent.agent import root_agent as lesson_planning_agent
 from q_and_a_orchastrator_agent.agent import qna_orchestrator_agent
 from syllabus_planning_agent.agent import root_agent as syllabus_planning_agent
-from q_and_a_agent.agent import root_agent as q_and_a_agent
 from diagram_generating_agent.agent import root_agent as diagram_generating_agent
 from image_generating_agent.agent import root_agent as image_generating_agent
 

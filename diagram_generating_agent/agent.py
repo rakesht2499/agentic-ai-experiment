@@ -7,7 +7,6 @@ from vertexai.generative_models import GenerativeModel
 from vertexai.preview.vision_models import ImageGenerationModel
 
 from models.constants import GEMINI_PRO_MODEL
-from q_and_a_agent.agent import root_agent
 
 prompt_for_refining_agent = """
 ## Instructions for the "Prompt Refinement Agent"
