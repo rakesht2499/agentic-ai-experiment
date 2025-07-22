@@ -64,21 +64,21 @@ refiner_agent = LlmAgent(
     instruction=refiner_prompt,
     output_schema=LessonPlanOutput
 )
-
-post_validation_parallel_agent = ParallelAgent(
-    name="PostValidationParallelAgent",
-    sub_agents=[
-        rag_agent,
-        planner_composer_agent,
-        refiner_agent
-    ]
-)
+#
+# post_validation_parallel_agent = SequentialAgent(
+#     name="PostValidationParallelAgent",
+#     sub_agents=[
+#         rag_agent,
+#         planner_composer_agent,
+#         refiner_agent
+#     ]
+# )
 
 formatter_agent = LlmAgent(
     name="LessonPlanFormatterAgent",
     model=GEMINI_FLASH_MODEL,
     instruction=lesson_formatter_prompt,
-    output_schema=LessonPlanOutput
+    # output_schema=LessonPlanOutput
 )
 
 
@@ -88,7 +88,10 @@ lesson_planning_agent = SequentialAgent(
     description="Interactive lesson planning agent with NCERT alignment and multimodal guidance",
     sub_agents=[
         input_validator_agent,
-        post_validation_parallel_agent,
+        rag_agent,
+        planner_composer_agent,
+        refiner_agent,
+        # post_validation_parallel_agent,
         formatter_agent
     ],
 )
