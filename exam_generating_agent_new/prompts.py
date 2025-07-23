@@ -19,10 +19,14 @@ Follow these strict steps:
 
 4. **Role-Based Formatting**:
    - Call RoleInspectorTool to get the user's role.
-   - Then:
-     - If `teacher`, call TeacherQuizFormatterAgent.
-     - If `parent`, call ParentQuizFormatterAgent.
-     - If `student`, call StudentQuizFormatterAgent.
+   - Call the `role_formatter_agent` with the following parameters:
+     - role: The user's role retrieved from RoleInspectorTool
+     - content: The generated quiz/exam content
+     - formatter_type: "quiz"
+   - The agent returns a JSON response with: formatter_content, formatter_type, and error_logs
+   - **Error Handling**:
+     - If error_logs array is NOT empty: Apologize to the user and ask them to try again ("I apologize, there was an issue formatting your quiz/exam. Please try your request again.")
+     - If error_logs array is empty: Use the formatter_content as your final response to present to the user
    - Format the assessment in a tone appropriate to the user.
 
 5. **Translation (Optional)**:
@@ -71,7 +75,7 @@ You are wired to the following tools:
 - `InputValidatorAgent` – Verifies if class, subject, chapters, and language are valid.
 - `RagAgent` – Retrieves NCERT-aligned content for the specified chapters.
 - `QuizGeneratorAgent` – Generates quiz or exam questions using QuizPrepTool.
-- `TeacherQuizFormatterAgent`, `ParentQuizFormatterAgent`, `StudentQuizFormatterAgent` – Format the generated questions based on the user's role.
+- `role_formatter_agent` – Formats the generated questions based on the user's role and content type.
 
 ---
 
@@ -81,12 +85,7 @@ You are wired to the following tools:
    - Check if any required fields are missing or unclear (e.g., missing class, subject, or chapters).
    - If so, call `QuizClarifierAgent` and wait for complete, clarified input.
 
-2. **Validation Phase**:
-   - Call `InputValidatorAgent` to validate subject, class, chapters, language, and mode.
-   - If input is invalid, return validation errors immediately.
-   - If valid, proceed with the cleaned `validated_input`.
-
-3. **Content Retrieval Phase**:
+2. **Content Retrieval Phase**:
    - Call `RagAgent` with class, subject, and chapters.
    - If chapters don’t align with NCERT, return:
      - Aligned chapter list
@@ -94,23 +93,22 @@ You are wired to the following tools:
      - Retrieved context (if any)
    - If `rag_failed` is true, warn user: "No textbook content found. Proceeding with fallback."
 
-4. **Question Generation Phase**:
+3. **Question Generation Phase**:
    - Call `QuizGeneratorAgent` to generate questions using `QuizPrepTool`.
    - Ensure tone, difficulty, and count are adjusted based on:
      - `mode` ("quiz" → 5–8 questions, "exam" → 15–20 questions)
      - `role` ("teacher", "parent", "student")
      - `language`
 
-5. **Formatting Phase**:
+4. **Formatting Phase**:
    - Based on the user’s `role`, select the appropriate formatter:
-     - `TeacherQuizFormatterAgent` → For print-ready or class-use
-     - `ParentQuizFormatterAgent` → For home revision
-     - `StudentQuizFormatterAgent` → Friendly challenge tone
-   - Call only one formatter matching the current role.
+     - role: The user's role from previous steps
+     - content: The generated quiz/exam questions
+     - formatter_type: "quiz"
+   - This will automatically apply the appropriate formatting based on the user's role.
 
-6. **(Optional) Translation Phase**:
+5. **(Optional) Translation Phase**:
    - If `language` ≠ "English", and role ≠ "teacher", call `TranslatorAgent` to localize content.
-
 ---
 
 ### ✅ Final Output
