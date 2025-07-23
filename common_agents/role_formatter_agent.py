@@ -234,9 +234,10 @@ class RoleFormatterAgent(BaseTool):
     @override
     async def run_async(self, context: InvocationContext, tool_context: ToolContext) -> RoleFormatterOutput:
         input_data = RoleFormatterInput(**context.input.dict())
-        role = input_data["role"]
+        # role = input_data["role"]
         content = input_data["content"]
         formatter_type = input_data["formatter_type"]
+        role = context.session.state.get("role", "unknown")
         
         # Log the formatting operation
         logs = [f"Formatting {formatter_type} content for role: {role}"]

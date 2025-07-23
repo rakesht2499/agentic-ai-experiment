@@ -1,18 +1,14 @@
-from asyncio import Event
-from typing import Optional, AsyncGenerator, override
+from typing import Literal
+from typing import Optional, override
 
-from google.adk.agents.callback_context import CallbackContext
 from google.adk.agents import LlmAgent, SequentialAgent
+from google.adk.agents.callback_context import CallbackContext
 from google.adk.models import LlmResponse
-from google.adk.tools import agent_tool, google_search, BaseTool, ToolContext
+from google.adk.tools import agent_tool, BaseTool, ToolContext
+from pydantic import BaseModel, Field
 
 from common_agents import role_formatter_agent
 from models.constants import GEMINI_PRO_MODEL
-from q_and_a_orchastrator_agent.prompts import QNA_ORCHESTRATOR_PROMPT
-from diagram_generating_agent.agent import flowchart_agent
-
-from pydantic import BaseModel, Field
-from typing import Literal
 
 class ClarifierInput(BaseModel):
     query: str = Field(..., description="User input that may be vague or incomplete.")
@@ -191,7 +187,7 @@ def search_google(query: str) -> str:
     # Mock or real implementation via SerpAPI / custom search
     return "According to a recent article, Newton's laws are..."
 
-from google.adk.agents import BaseAgent, InvocationContext
+from google.adk.agents import InvocationContext
 
 class QnAOrchestratorInput(BaseModel):
     query: str = Field(..., description="User's question or voice-transcribed input.")
@@ -202,8 +198,6 @@ class QnAOrchestratorInput(BaseModel):
     chapter: Optional[str] = None
     language: Optional[str] = Field("english", description="Preferred language for output")
 
-
-from typing import Optional
 
 class RoleInspectorTool(BaseTool):
     @override

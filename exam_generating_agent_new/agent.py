@@ -1,6 +1,8 @@
 from typing import List, Literal, Optional, override
 from pydantic import BaseModel, Field
-from google.adk.agents import LlmAgent, InvocationContext
+from google.adk.agents import LlmAgent, SequentialAgent, InvocationContext
+from google.adk.agents.callback_context import CallbackContext
+from google.adk.models import LlmResponse
 from google.adk.tools import agent_tool, BaseTool, ToolContext
 
 from common_agents import role_formatter_agent
@@ -8,6 +10,31 @@ from exam_generating_agent_new.prompts import QUIZ_PREP_ORCHESTRATOR_PROMPT
 from models.constants import GEMINI_FLASH_MODEL, GEMINI_PRO_MODEL
 
 from exam_generating_agent_new.prompts import instructions_for_question_input_validator
+
+
+def quiz_rag_postprocess_callback(callback_context: CallbackContext, llm_response: LlmResponse) -> Optional[LlmResponse]:
+    callback_context.state["role"] = "student"  # Will be overridden by orchestrator input
+    if llm_response.content and llm_response.content.parts:
+        if llm_response.content.parts[0].text:
+            original_text = llm_response.content.parts[0].text
+            print(f"[Quiz Callback] Inspected original response text: '{original_text[:100]}...'")
+            if original_text == "RAG_RETRIEVAL_FAILED":
+                callback_context.state["rag_failed"] = True
+            else:
+                callback_context.state["rag_failed"] = False
+            return llm_response
+        elif llm_response.content.parts[0].function_call:
+            print(f"[Quiz Callback] Inspected response: Contains function call '{llm_response.content.parts[0].function_call.name}'. No text modification.")
+            return None
+        else:
+            print("[Quiz Callback] Inspected response: No text content found.")
+            return None
+    elif llm_response.error_message:
+        print(f"[Quiz Callback] Inspected response: Contains error '{llm_response.error_message}'. No modification.")
+        return None
+    else:
+        print("[Quiz Callback] Inspected response: Empty LlmResponse.")
+        return None
 
 
 class QuestionGenerationInput(BaseModel):
@@ -92,78 +119,6 @@ input_validator_agent = LlmAgent(
     model=GEMINI_FLASH_MODEL,
     instruction=instructions_for_question_input_validator,
 )
-#
-# teacher_quiz_formatter_agent = LlmAgent(
-#     name="TeacherQuizFormatterAgent",
-#     model=GEMINI_PRO_MODEL,
-#     instruction="""
-# You are formatting a quiz or exam for a teacher to print or assign in class.
-#
-# 1. Present questions in a clean numbered list.
-# 2. Maintain proper structure with:
-#    - ✅ Marks per question
-#    - ✅ Section headers (if exam)
-#    - ✅ Blank space for answers
-# 3. Do not simplify or answer the questions.
-# 4. Preserve subject-specific terminology.
-#
-# At the end, add:
-# 📘 For: Class {{ input.class_ }}, Subject: {{ input.subject }}, Chapters: {{ chapter_list }}
-# """
-# )
-#
-# parent_quiz_formatter_agent = LlmAgent(
-#     name="ParentQuizFormatterAgent",
-#     model=GEMINI_PRO_MODEL,
-#     instruction="""
-# You are helping a parent revise a quiz or exam with their child at home.
-#
-# 1. Reword questions in simple, parent-friendly language.
-# 2. Add short encouraging tips after each question like:
-#    - "You’ve got this!"
-#    - "Let’s recall what we saw in the diagram!"
-# 3. Keep it warm and easy to read. Use everyday vocabulary.
-# 4. Do not answer the questions.
-#
-# At the end:
-# - ✅ "You did a great job guiding your child!"
-# - 📘 Based on: Class {{ input.class_ }}, Subject: {{ input.subject }}
-# """
-# )
-#
-# student_quiz_formatter_agent = LlmAgent(
-#     name="StudentQuizFormatterAgent",
-#     model=GEMINI_PRO_MODEL,
-#     instruction="""
-#     You are a quiz master giving an interactive quiz directly to a student.
-#
-#     🧠 Here's how you behave:
-#     - Present **only one** question at a time.
-#     - After each question, wait for the student's answer before sending the next.
-#     - Use friendly, encouraging language.
-#     - After 2–3 questions, check in:
-#        - "Need a break?"
-#        - "Want a hint?"
-#        - "You’re doing amazing, keep going! ⚡"
-#
-#     🤖 Important:
-#     - Do **not** give answers.
-#     - Keep track of which questions have been asked.
-#     - Never repeat a question.
-#     - At the end, say:
-#       ✅ "Great work!"
-#       📘 "Questions from Class {{ input.class_ }}, Subject: {{ input.subject }}, Chapters: {{ input.chapter_list }}"
-#
-#     🎯 Example Interaction Flow:
-#     1. "Ready to test your knowledge on Heredity? Let’s go! 🤓"
-#     2. "Q1: What is the term for the study of how traits are passed from one generation to the next?"
-#     ⏸️ *[Wait for response]*
-#     3. "Awesome! Let’s try another one. ⚡"
-#     4. "Q2: When Gregor Mendel crossed a pure tall and pure dwarf pea plant..."
-#
-#     Stay in this loop until all questions are asked.
-#     """
-# )
 
 rag_agent = LlmAgent(
     name="RagAgent",
@@ -174,9 +129,16 @@ You are connected to NCERT textbook content.
 Given a query and metadata like subject and chapter, retrieve relevant textbook content from the textbook.
 
 Otherwise, return the most relevant answer from the textbook. Do not invent or guess.
-"""
+""",
+    after_model_callback=quiz_rag_postprocess_callback
 )
 
+class RoleInspectorTool(BaseTool):
+    @override
+    async def run_async(self, context: InvocationContext, tool_context: ToolContext) -> str:
+        return context.session.state.get("role", "unknown")
+
+role_inspector_tool = RoleInspectorTool(name="RoleInspectorTool", description="Inspects the current user role from the agent state context and returns it.")
 
 class QuizPrepTool(BaseTool):
     name = "QuizPrepTool"
@@ -234,16 +196,52 @@ Always use the QuizPrepTool to fetch:
     tools=[quiz_prep_tool],
 )
 
+
+processing_agent = SequentialAgent(
+    name="ProcessingAgent",
+    sub_agents=[
+        rag_agent,
+        quiz_generator_agent,
+        LlmAgent(
+            name="RoleFormatterAgent",
+            model=GEMINI_PRO_MODEL,
+            instruction="""
+            1. Call RoleInspectorTool to get the user's role
+            2. Call role_formatter_agent with:
+               - role: user's role from step 1
+               - content: Quiz content from previous step
+               - formatter_type: "quiz"
+            3. Handle the JSON response:
+               - If error_logs is NOT empty: Return "I apologize, there was an issue formatting your quiz. Please try again."
+               - If error_logs is empty: Return the formatter_content as the final response
+            """,
+            tools=[role_inspector_tool, role_formatter_agent]
+        )
+    ],
+    description="Handles RAG retrieval, quiz generation, and role-based formatting sequentially"
+)
+
 quiz_prep_orchestrator_agent = LlmAgent(
     name="QuizPrepOrchestratorAgent",
     model=GEMINI_PRO_MODEL,
-    instruction=QUIZ_PREP_ORCHESTRATOR_PROMPT,
+    instruction="""
+    You are a quiz/exam generation orchestrator with clear separation of concerns:
+
+    1. **First, call QuizClarifierAgent** to check if the user input is complete and clear.
+
+    2. **Check the clarifier response**:
+       - If it contains "needs_clarification": true → Return the follow_up question directly to user and STOP
+       - If it contains "needs_clarification": false → Continue to step 3
+
+    3. **Call ProcessingAgent** to handle RAG retrieval, quiz generation, and role-based formatting.
+
+    IMPORTANT: Never call ProcessingAgent if clarification is needed. Always ask user first.
+    IMPORTANT: Do not call clarifierAgent once you receive the output from ProcessingAgent
+    """,
     input_schema=QuestionGenerationInput,
     tools=[
         agent_tool.AgentTool(agent=clarifier_agent),
-        agent_tool.AgentTool(agent=rag_agent),
-        role_formatter_agent,
-        agent_tool.AgentTool(agent=quiz_generator_agent),
+        agent_tool.AgentTool(agent=processing_agent)
     ],
 )
 
