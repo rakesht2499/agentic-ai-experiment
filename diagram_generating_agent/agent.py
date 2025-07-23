@@ -7,7 +7,7 @@ from vertexai.generative_models import GenerativeModel
 from vertexai.preview.vision_models import ImageGenerationModel
 
 from diagram_generating_agent.prompts import prompt_for_refiner_agent, prompt_for_validator_agent
-from models.constants import GEMINI_PRO_MODEL, GEMINI_FLASH_MODEL
+from models.constants import GEMINI_FLASH_MODEL
 
 
 prompt_for_flowchart_agent = """---
