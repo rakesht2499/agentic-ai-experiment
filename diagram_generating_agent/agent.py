@@ -6,78 +6,9 @@ from pydantic import BaseModel, Field
 from vertexai.generative_models import GenerativeModel
 from vertexai.preview.vision_models import ImageGenerationModel
 
-from models.constants import GEMINI_PRO_MODEL
+from diagram_generating_agent.prompts import prompt_for_refiner_agent, prompt_for_validator_agent
+from models.constants import GEMINI_PRO_MODEL, GEMINI_FLASH_MODEL
 
-prompt_for_refining_agent = """
-## Instructions for the "Prompt Refinement Agent"
-
-**Goal:** To transform a basic request for a flowchart into a highly detailed and effective prompt suitable for a flowchart or image generation tool, regardless of the specific topic.
-
-**Input:** A general topic request for a flowchart (e.g., "Generate a flowchart for [topic] for [audience]").
-
-**Output:** A precise, actionable prompt for an image generation model.
-
----
-
-### Step-by-Step Refinement Process:
-
-**1. Understand the Core Request & Audience:**
-
-* **Identify the Subject:** What is the main topic the flowchart needs to explain? (e.g., "How a bill becomes a law," "Steps to bake a cake," "Life cycle of a butterfly").
-* **Identify the Output Format:** Flowchart.
-* **Identify the Target Audience:** Who is this flowchart for? (e.g., "primary school students," "high school biology class," "adults learning a new process," "technical professionals").
-* **Implications of Audience:** This is crucial for tailoring the prompt:
-    * **Language:** Simple vs. complex vocabulary.
-    * **Visuals:** Child-friendly illustrations, realistic diagrams, professional icons, abstract shapes.
-    * **Level of Detail:** High-level overview vs. granular steps.
-    * **Aesthetics:** Bright and playful, serious and informative, minimalist.
-    * **Text Size/Font:** Large and clear for young eyes, standard for adults, specific fonts for technical diagrams.
-
-**2. Identify the Key Stages/Steps/Components:**
-
-* Determine the main sequential steps or distinct components that need to be represented in the flowchart. These will be the "boxes" or "nodes" in the flowchart. (e.g., for baking: "Gather Ingredients," "Mix Dough," "Bake," "Cool").
-
-**3. Define Visuals and Actions for Each Stage/Component:**
-
-* For *each* identified stage, specify the visual elements and implied actions. Be as descriptive as possible.
-    * **Visual:** What specific icons, illustrations, or images should represent this stage? (e.g., "stack of ingredients," "bowl and spoon," "oven," "cooling rack").
-    * **Action/Concept:** How should the process or state be visually conveyed within or around this element? (e.g., "arrows showing mixing motion," "steam rising from the oven").
-    * **Text Label:** What precise, concise text should accompany this stage?
-
-**4. Specify Flow and Connection (Arrows & Connectors):**
-
-* **Arrows:** Crucially, describe how the stages are connected. Arrows are essential for showing direction.
-    * Specify their appearance: "clear," "bold," "curved," "straight," "dotted."
-    * Emphasize their purpose: "indicating the flow of the process," "showing sequence."
-* **Decision Points (if applicable):** If the flowchart includes "yes/no" or branching paths, specify how these diamonds or decision points should be represented and how their branches connect to subsequent steps.
-
-**5. Define Overall Aesthetic and Text Formatting:**
-
-* **Color Palette:** Suggest a general color scheme (e.g., "bright and cheerful," "muted and professional," "monochromatic with highlights").
-* **Style:** Specify the overall artistic style (e.g., "simple cartoon," "realistic illustration," "flat design," "technical diagram," "hand-drawn").
-* **Text:**
-    * **Font:** Type (e.g., "sans-serif," "monospace," "serif").
-    * **Size:** "Large and readable," "standard."
-    * **Clarity:** Emphasize conciseness and readability for labels.
-* **Title:** Require a prominent and appropriate title at the top, tailored to the audience (e.g., "How a Bill Becomes a Law," "My Favorite Cake Recipe Steps").
-* **Layout:** "Uncluttered," "easy to follow," "clean."
-
-**6. Construct the Final Prompt (Agent's Output Structure):**
-
-The agent should synthesize all the above points into a coherent, single prompt string, following this general structure:
-
-"Create a [overall aesthetic adjectives: e.g., clear, vibrant, professional] flowchart titled '[Specific Flowchart Title]' that explains [Specific Subject] for [Target Audience]. The flowchart must feature [text attributes: e.g., large, easy-to-read text; professional, concise labels] and [visual style adjectives: e.g., child-friendly illustrations; precise icons; minimalist shapes].
-
-Clearly depict the following stages/steps, with prominent arrows indicating the flow:
-
-1.  **[Stage 1 Name]:** [Detailed visual description for Stage 1, including colors, specific objects, implied actions, and direction of any internal arrows].
-2.  **[Stage 2 Name]:** [Detailed visual description for Stage 2].
-3.  **[Stage 3 Name]:** [Detailed visual description for Stage 3].
-    * *(Add more stages as needed)*
-
-Ensure all connecting arrows are [arrow style: e.g., clear, bold, curved] and explicitly show the direction of movement/progression. The overall design should be [overall layout adjectives: e.g., uncluttered, intuitive, visually appealing] and easy for [target audience] to understand at a glance."
-
-"""
 
 prompt_for_flowchart_agent = """---
 ## Instructions for the "Diagram Generation Agent"
@@ -226,45 +157,45 @@ class DiagramOrchestratorOutput(BaseModel):
 
 # --- Agents --- #
 prompt_validator_agent = LlmAgent(
-    name="PromptValidatorAgent",
-    model="gemini-2.5-flash",
-    instruction="Analyze the user's diagram prompt for clarity. If it's too vague (e.g., 'process flow'), set 'is_clear' to False and explain what context is missing.",
+    name="prompt_validator_agent",
+    model=GEMINI_FLASH_MODEL,
+    instruction=prompt_for_validator_agent,
     output_schema=ValidatorOutput
 )
 
 reviewer_agent = LlmAgent(
-    name="ReviewerAgent",
-    model="gemini-2.5-flash",
+    name="reviewer_agent",
+    model=GEMINI_FLASH_MODEL,
     instruction="Review the refined diagram prompt. If it's detailed and clear, set 'approved' to True. Otherwise, give concise feedback and set 'approved' to False.",
     output_schema=ReviewerOutput
 )
 
 prompt_refiner_agent = LlmAgent(
-    name="PromptRefinerAgent",
-    model="gemini-2.5-flash",
-    instruction=prompt_for_refining_agent,
+    name="prompt_refiner_agent",
+    model=GEMINI_FLASH_MODEL,
+    instruction=prompt_for_refiner_agent,
     output_schema=RefinerOutput
 )
 
 diagram_generation_agent = LlmAgent(
     name="DiagramGenerationAgent",
-    model="gemini-2.5-flash",
+    model=GEMINI_FLASH_MODEL,
     description="Generates a diagram and caption based on the final prompt.",
     instruction=prompt_for_flowchart_agent,
     tools=[generate_diagram],
     # output_schema=DiagramFinalAnswer
 )
 
-flowchart_agent = LlmAgent(
+diagram_generating_agent = LlmAgent(
     name="diagram_generating_agent",
-    model=GEMINI_PRO_MODEL,
+    model=GEMINI_FLASH_MODEL,
     description="Controls the end-to-end diagram generation pipeline.",
     instruction="""
     You orchestrate a diagram-only generation flow. Here's the process:
-    1. Call 'PromptValidatorAgent' with the user's prompt.
-    2. If not clear, refine using 'PromptRefinerAgent' and check with 'ReviewerAgent' (up to 3 times).
-    3. Once approved or loop ends, call 'DiagramGenerationAgent' with the final prompt.
-    4. Return the final prompt, diagram file path, and caption.
+    1. Call 'prompt_validator_agent' with the user's prompt.
+    2. If not clear, refine using 'prompt_refiner_agent' and check with 'reviewer_agent' (up to 2 times).
+    3. Once approved or loop ends, call 'diagram_generation_agent' with the final prompt.
+    4. Return diagram file name (Eg. Something.png), and caption.
     """,
     tools=[
         agent_tool.AgentTool(agent=prompt_validator_agent),
@@ -272,14 +203,6 @@ flowchart_agent = LlmAgent(
         agent_tool.AgentTool(agent=reviewer_agent),
         agent_tool.AgentTool(agent=diagram_generation_agent)
     ],
-    # output_schema=DiagramOrchestratorOutput
 )
 
-root_agent=flowchart_agent
-
-# --- Optional test run --- #
-# if __name__ == "__main__":
-#     test_prompt = "A user opens the app -> Auth check -> Homepage shown -> User clicks 'Explore' -> Product list displayed"
-#     result = root_agent.run(prompt=test_prompt)
-#     print("\n--- FINAL RESULT ---")
-#     print(result)
+root_agent=diagram_generating_agent
