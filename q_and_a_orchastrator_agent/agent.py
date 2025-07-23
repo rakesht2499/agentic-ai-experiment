@@ -56,6 +56,26 @@ Otherwise, return the most relevant answer from the textbook. Do not invent or g
     after_model_callback=rag_postprocess_callback
 )
 
+def clarification_exit_condition(tool_context: ToolContext) -> Optional[bool]:
+    """Exit early if clarification is complete (needs_clarification = false)"""
+    # Get the last response from clarifier_agent
+    print(f"[Callback] Inspected response: , {tool_context}")
+    if hasattr(tool_context, 'last_response') and tool_context.last_response:
+        try:
+            # Parse the clarifier response to check if clarification is complete
+            response_text = tool_context.last_response.content.parts[
+                0].text if tool_context.last_response.content and tool_context.last_response.content.parts else ""
+
+            # Check if response contains needs_clarification: false
+            if '"needs_clarification": false' in response_text or '"needs_clarification":false' in response_text:
+                return True  # Exit the loop early
+
+        except Exception:
+            pass  # Continue loop if parsing fails
+
+    return False  # Continue looping
+
+
 clarifier_agent = LlmAgent(
     name="ClarifierAgent",
     model=GEMINI_PRO_MODEL,
@@ -71,6 +91,8 @@ clarifier_agent = LlmAgent(
        - Ask one short follow-up question to clarify intent.
        - Respond with: { "clarified_query": "", "needs_clarification": true, "follow_up": "Can you tell me which chapter or topic you're referring to?" }
     
+    You MUST call the 'clarification_exit_condition' function after your execution. Do not output any text
+    
     Role-based tone:
     - 👨‍🏫 Teacher → Direct and formal
     - 👩 Parent → Supportive and gentle
@@ -78,6 +100,7 @@ clarifier_agent = LlmAgent(
     
     Never guess. Always ask if uncertain.
     """,
+    tools=[clarification_exit_condition],
 )
 
 
@@ -212,29 +235,12 @@ class RoleInspectorTool(BaseTool):
 role_inspector_tool = RoleInspectorTool(name="RoleInspectorTool", description="Inspects the current user role from the agent state context and returns it.")
 
 # --- Step 1: Clarification Exit Condition ---
-def clarification_exit_condition(context):
-    """Exit early if clarification is complete (needs_clarification = false)"""
-    # Get the last response from clarifier_agent
-    if hasattr(context, 'last_response') and context.last_response:
-        try:
-            # Parse the clarifier response to check if clarification is complete
-            response_text = context.last_response.content.parts[0].text if context.last_response.content and context.last_response.content.parts else ""
-            
-            # Check if response contains needs_clarification: false
-            if '"needs_clarification": false' in response_text or '"needs_clarification":false' in response_text:
-                return True  # Exit the loop early
-                
-        except Exception:
-            pass  # Continue loop if parsing fails
-    
-    return False  # Continue looping
 
 # --- Step 1: Clarification Loop Agent (max 2 retries) ---
 clarification_loop_agent = LoopAgent(
     name="ClarificationLoopAgent",
-    sub_agent=clarifier_agent,
+    sub_agents=[clarifier_agent],
     max_iterations=2,
-    exit_condition=clarification_exit_condition,
     description="Clarifies user query with up to 2 retries, exits early when complete"
 )
 
@@ -277,7 +283,6 @@ qna_orchestrator_agent = SequentialAgent(
         rag_retrieval_agent,
         role_formatting_agent
     ],
-    input_schema=QnAOrchestratorInput,
     description="Complete Q&A orchestrator: Clarification → RAG retrieval → Role-based formatting"
 )
 
