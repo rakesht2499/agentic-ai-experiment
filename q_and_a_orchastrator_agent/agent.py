@@ -2,7 +2,7 @@ from asyncio import Event
 from typing import Optional, AsyncGenerator, override
 
 from google.adk.agents.callback_context import CallbackContext
-from google.adk.agents import LlmAgent, SequentialAgent, LoopAgent
+from google.adk.agents import LlmAgent, SequentialAgent
 from google.adk.models import LlmResponse
 from google.adk.tools import agent_tool, google_search, BaseTool, ToolContext
 
@@ -56,26 +56,6 @@ Otherwise, return the most relevant answer from the textbook. Do not invent or g
     after_model_callback=rag_postprocess_callback
 )
 
-def clarification_exit_condition(tool_context: ToolContext) -> Optional[bool]:
-    """Exit early if clarification is complete (needs_clarification = false)"""
-    # Get the last response from clarifier_agent
-    print(f"[Callback] Inspected response: , {tool_context}")
-    if hasattr(tool_context, 'last_response') and tool_context.last_response:
-        try:
-            # Parse the clarifier response to check if clarification is complete
-            response_text = tool_context.last_response.content.parts[
-                0].text if tool_context.last_response.content and tool_context.last_response.content.parts else ""
-
-            # Check if response contains needs_clarification: false
-            if '"needs_clarification": false' in response_text or '"needs_clarification":false' in response_text:
-                return True  # Exit the loop early
-
-        except Exception:
-            pass  # Continue loop if parsing fails
-
-    return False  # Continue looping
-
-
 clarifier_agent = LlmAgent(
     name="ClarifierAgent",
     model=GEMINI_PRO_MODEL,
@@ -91,8 +71,6 @@ clarifier_agent = LlmAgent(
        - Ask one short follow-up question to clarify intent.
        - Respond with: { "clarified_query": "", "needs_clarification": true, "follow_up": "Can you tell me which chapter or topic you're referring to?" }
     
-    You MUST call the 'clarification_exit_condition' function after your execution. Do not output any text
-    
     Role-based tone:
     - 👨‍🏫 Teacher → Direct and formal
     - 👩 Parent → Supportive and gentle
@@ -100,7 +78,6 @@ clarifier_agent = LlmAgent(
     
     Never guess. Always ask if uncertain.
     """,
-    tools=[clarification_exit_condition],
 )
 
 
@@ -234,56 +211,52 @@ class RoleInspectorTool(BaseTool):
 
 role_inspector_tool = RoleInspectorTool(name="RoleInspectorTool", description="Inspects the current user role from the agent state context and returns it.")
 
-# --- Step 1: Clarification Exit Condition ---
-
-# --- Step 1: Clarification Loop Agent (max 2 retries) ---
-clarification_loop_agent = LoopAgent(
-    name="ClarificationLoopAgent",
-    sub_agents=[clarifier_agent],
-    max_iterations=2,
-    description="Clarifies user query with up to 2 retries, exits early when complete"
+# --- Step 1: Processing Sequential Agent (RAG → Role Format) ---
+processing_agent = SequentialAgent(
+    name="ProcessingAgent",
+    sub_agents=[
+        rag_agent,
+        LlmAgent(
+            name="RoleFormatterAgent",
+            model=GEMINI_PRO_MODEL,
+            instruction="""
+            1. Call RoleInspectorTool to get the user's role
+            2. Call role_formatter_agent with:
+               - role: user's role from step 1
+               - content: RAG response from previous step
+               - formatter_type: "qna"
+            3. Handle the JSON response:
+               - If error_logs is NOT empty: Return "I apologize, there was an issue formatting your answer. Please try asking your question again."
+               - If error_logs is empty: Return the formatter_content as the final response
+            """,
+            tools=[role_inspector_tool, role_formatter_agent]
+        )
+    ],
+    description="Handles RAG retrieval and role-based formatting sequentially"
 )
 
-# --- Step 2: RAG Retrieval Agent ---
-rag_retrieval_agent = LlmAgent(
-    name="RAGRetrievalAgent", 
+# --- Step 2: Main Q&A Orchestrator (Clarity Check + Processing) ---
+qna_orchestrator_agent = LlmAgent(
+    name="QnAOrchestratorAgent",
     model=GEMINI_PRO_MODEL,
     instruction="""
-    Call the RAG agent to retrieve textbook content based on the clarified query.
-    If no content is found, set state['rag_failed'] = true.
-    """,
-    tools=[agent_tool.AgentTool(agent=rag_agent)]
-)
+    You are a Q&A orchestrator with clear separation of concerns:
 
-# --- Step 3: Role-Based Formatting Agent ---
-role_formatting_agent = LlmAgent(
-    name="RoleFormattingAgent",
-    model=GEMINI_PRO_MODEL,
-    instruction="""
-    1. Call RoleInspectorTool to get the user's role
-    2. Call role_formatter_agent with:
-       - role: user's role from step 1
-       - content: RAG response from previous step
-       - formatter_type: "qna"
-    3. Handle the JSON response:
-       - If error_logs is NOT empty: Return "I apologize, there was an issue formatting your answer. Please try asking your question again."
-       - If error_logs is empty: Return the formatter_content as the final response
+    1. **First, call ClarifierAgent** to check if the user query is clear.
+
+    2. **Check the clarifier response**:
+       - If it contains "needs_clarification": true → Return the follow_up question directly to user and STOP
+       - If it contains "needs_clarification": false → Continue to step 3
+
+    3. **Call ProcessingAgent** to handle RAG retrieval and role-based formatting.
+
+    IMPORTANT: Never call ProcessingAgent if clarification is needed. Always ask user first.
     """,
     tools=[
-        role_inspector_tool,
-        role_formatter_agent
-    ]
-)
-
-# --- Step 4: Complete Q&A Orchestrator (Single Sequential Flow) ---
-qna_orchestrator_agent = SequentialAgent(
-    name="QnAOrchestratorAgent",
-    sub_agents=[
-        clarification_loop_agent,
-        rag_retrieval_agent,
-        role_formatting_agent
+        agent_tool.AgentTool(agent=clarifier_agent),
+        agent_tool.AgentTool(agent=processing_agent)
     ],
-    description="Complete Q&A orchestrator: Clarification → RAG retrieval → Role-based formatting"
+    input_schema=QnAOrchestratorInput
 )
 
 root_agent = qna_orchestrator_agent
