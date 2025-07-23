@@ -6,7 +6,7 @@ from google.adk.tools import agent_tool
 
 from models.constants import GEMINI_FLASH_MODEL, GEMINI_PRO_MODEL
 
-from exam_generating_agent.prompts import instructions_for_question_input_validator
+from depricated_quiz_agent.prompts import instructions_for_question_input_validator
 
 # --- Input and Output Schemas --- #
 class QuestionGenerationInput(BaseModel):

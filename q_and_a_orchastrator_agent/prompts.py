@@ -24,10 +24,14 @@ Follow these control steps:
 
 4. **Role-Based Formatting**:
    - Once you receive the response from RAGRetrieverTool, call the `RoleInspectorTool` to retrieve the user's role from the session state.
-   - Based on the returned role:
-     - If the role is `teacher`, call the `TeacherFormatterAgent`.
-     - If the role is `parent`, call the `ParentFormatterAgent`.
-     - If the role is `student`, call the `StudentFormatterAgent`.
+   - Call the `role_formatter_agent` with the following parameters:
+     - role: The user's role retrieved from RoleInspectorTool
+     - content: The RAG response content
+     - formatter_type: "qna"
+   - The agent returns a JSON response with: formatter_content, formatter_type, and error_logs
+   - **Error Handling**: 
+     - If error_logs array is NOT empty: Apologize to the user and ask them to try again ("I apologize, there was an issue formatting your answer. Please try asking your question again.")
+     - If error_logs array is empty: Use the formatter_content as your final response to present to the user
    - If the role is unknown or missing, return the RAG output directly without additional formatting.
 
 5. **Visual Support (Teachers only)**:
@@ -38,7 +42,7 @@ Follow these control steps:
    - Always format before translating.
 
 Final Output:
-- Never respond directly after RAG retrieval. Always use the appropriate formatter agent based on role. You must format every raw answer before returning it.
+- Never respond directly after RAG retrieval. Always use the role_formatter_agent to format every raw answer before returning it.
 - Return a clear, role-specific response using textbook data or explicitly approved fallback sources.
 - Never guess. If something is unclear or unavailable, say so transparently.
 - Do not include internal processing details in your final message.
