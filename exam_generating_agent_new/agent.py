@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 from google.adk.agents import LlmAgent, InvocationContext
 from google.adk.tools import agent_tool, BaseTool, ToolContext
 
+from common_agents import role_formatter_agent
 from exam_generating_agent_new.prompts import QUIZ_PREP_ORCHESTRATOR_PROMPT
 from models.constants import GEMINI_FLASH_MODEL, GEMINI_PRO_MODEL
 
@@ -26,7 +27,6 @@ class RagAgentInput(BaseModel):
 
 class RagAgentOutput(BaseModel):
     context: str = Field(..., description="Retrieved content or fallback message")
-
 
 # --- Sub-Agents --- #
 clarifier_agent = LlmAgent(
@@ -92,44 +92,78 @@ input_validator_agent = LlmAgent(
     model=GEMINI_FLASH_MODEL,
     instruction=instructions_for_question_input_validator,
 )
-
-teacher_quiz_formatter_agent = LlmAgent(
-    name="TeacherQuizFormatterAgent",
-    model=GEMINI_PRO_MODEL,
-    instruction="""
-You are formatting a quiz or exam for a teacher to print or assign in class.
-
-1. Present questions in a clean numbered list.
-2. Maintain proper structure with:
-   - ✅ Marks per question
-   - ✅ Section headers (if exam)
-   - ✅ Blank space for answers
-3. Do not simplify or answer the questions.
-4. Preserve subject-specific terminology.
-
-At the end, add:
-📘 For: Class {{ input.class_ }}, Subject: {{ input.subject }}, Chapters: {{ chapter_list }}
-"""
-)
-
-parent_quiz_formatter_agent = LlmAgent(
-    name="ParentQuizFormatterAgent",
-    model=GEMINI_PRO_MODEL,
-    instruction="""
-You are helping a parent revise a quiz or exam with their child at home.
-
-1. Reword questions in simple, parent-friendly language.
-2. Add short encouraging tips after each question like:
-   - "You’ve got this!"
-   - "Let’s recall what we saw in the diagram!"
-3. Keep it warm and easy to read. Use everyday vocabulary.
-4. Do not answer the questions.
-
-At the end:
-- ✅ "You did a great job guiding your child!"
-- 📘 Based on: Class {{ input.class_ }}, Subject: {{ input.subject }}
-"""
-)
+#
+# teacher_quiz_formatter_agent = LlmAgent(
+#     name="TeacherQuizFormatterAgent",
+#     model=GEMINI_PRO_MODEL,
+#     instruction="""
+# You are formatting a quiz or exam for a teacher to print or assign in class.
+#
+# 1. Present questions in a clean numbered list.
+# 2. Maintain proper structure with:
+#    - ✅ Marks per question
+#    - ✅ Section headers (if exam)
+#    - ✅ Blank space for answers
+# 3. Do not simplify or answer the questions.
+# 4. Preserve subject-specific terminology.
+#
+# At the end, add:
+# 📘 For: Class {{ input.class_ }}, Subject: {{ input.subject }}, Chapters: {{ chapter_list }}
+# """
+# )
+#
+# parent_quiz_formatter_agent = LlmAgent(
+#     name="ParentQuizFormatterAgent",
+#     model=GEMINI_PRO_MODEL,
+#     instruction="""
+# You are helping a parent revise a quiz or exam with their child at home.
+#
+# 1. Reword questions in simple, parent-friendly language.
+# 2. Add short encouraging tips after each question like:
+#    - "You’ve got this!"
+#    - "Let’s recall what we saw in the diagram!"
+# 3. Keep it warm and easy to read. Use everyday vocabulary.
+# 4. Do not answer the questions.
+#
+# At the end:
+# - ✅ "You did a great job guiding your child!"
+# - 📘 Based on: Class {{ input.class_ }}, Subject: {{ input.subject }}
+# """
+# )
+#
+# student_quiz_formatter_agent = LlmAgent(
+#     name="StudentQuizFormatterAgent",
+#     model=GEMINI_PRO_MODEL,
+#     instruction="""
+#     You are a quiz master giving an interactive quiz directly to a student.
+#
+#     🧠 Here's how you behave:
+#     - Present **only one** question at a time.
+#     - After each question, wait for the student's answer before sending the next.
+#     - Use friendly, encouraging language.
+#     - After 2–3 questions, check in:
+#        - "Need a break?"
+#        - "Want a hint?"
+#        - "You’re doing amazing, keep going! ⚡"
+#
+#     🤖 Important:
+#     - Do **not** give answers.
+#     - Keep track of which questions have been asked.
+#     - Never repeat a question.
+#     - At the end, say:
+#       ✅ "Great work!"
+#       📘 "Questions from Class {{ input.class_ }}, Subject: {{ input.subject }}, Chapters: {{ input.chapter_list }}"
+#
+#     🎯 Example Interaction Flow:
+#     1. "Ready to test your knowledge on Heredity? Let’s go! 🤓"
+#     2. "Q1: What is the term for the study of how traits are passed from one generation to the next?"
+#     ⏸️ *[Wait for response]*
+#     3. "Awesome! Let’s try another one. ⚡"
+#     4. "Q2: When Gregor Mendel crossed a pure tall and pure dwarf pea plant..."
+#
+#     Stay in this loop until all questions are asked.
+#     """
+# )
 
 rag_agent = LlmAgent(
     name="RagAgent",
@@ -141,40 +175,6 @@ Given a query and metadata like subject and chapter, retrieve relevant textbook 
 
 Otherwise, return the most relevant answer from the textbook. Do not invent or guess.
 """
-)
-
-student_quiz_formatter_agent = LlmAgent(
-    name="StudentQuizFormatterAgent",
-    model=GEMINI_PRO_MODEL,
-    instruction="""
-    You are a quiz master giving an interactive quiz directly to a student.
-    
-    🧠 Here's how you behave:
-    - Present **only one** question at a time.
-    - After each question, wait for the student's answer before sending the next.
-    - Use friendly, encouraging language.
-    - After 2–3 questions, check in:
-       - "Need a break?"
-       - "Want a hint?"
-       - "You’re doing amazing, keep going! ⚡"
-    
-    🤖 Important:
-    - Do **not** give answers.
-    - Keep track of which questions have been asked.
-    - Never repeat a question.
-    - At the end, say:
-      ✅ "Great work!"
-      📘 "Questions from Class {{ input.class_ }}, Subject: {{ input.subject }}, Chapters: {{ input.chapter_list }}"
-    
-    🎯 Example Interaction Flow:
-    1. "Ready to test your knowledge on Heredity? Let’s go! 🤓"
-    2. "Q1: What is the term for the study of how traits are passed from one generation to the next?"
-    ⏸️ *[Wait for response]*
-    3. "Awesome! Let’s try another one. ⚡"
-    4. "Q2: When Gregor Mendel crossed a pure tall and pure dwarf pea plant..."
-    
-    Stay in this loop until all questions are asked.
-    """
 )
 
 
@@ -241,12 +241,9 @@ quiz_prep_orchestrator_agent = LlmAgent(
     input_schema=QuestionGenerationInput,
     tools=[
         agent_tool.AgentTool(agent=clarifier_agent),
-        agent_tool.AgentTool(agent=input_validator_agent),
         agent_tool.AgentTool(agent=rag_agent),
+        role_formatter_agent,
         agent_tool.AgentTool(agent=quiz_generator_agent),
-        agent_tool.AgentTool(agent=teacher_quiz_formatter_agent),
-        agent_tool.AgentTool(agent=parent_quiz_formatter_agent),
-        agent_tool.AgentTool(agent=student_quiz_formatter_agent),
     ],
 )
 

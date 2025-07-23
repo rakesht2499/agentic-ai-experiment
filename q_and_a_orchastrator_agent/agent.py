@@ -6,6 +6,7 @@ from google.adk.agents import LlmAgent
 from google.adk.models import LlmResponse
 from google.adk.tools import agent_tool, google_search, BaseTool, ToolContext
 
+from common_agents import role_formatter_agent
 from models.constants import GEMINI_PRO_MODEL
 from q_and_a_orchastrator_agent.prompts import QNA_ORCHESTRATOR_PROMPT
 from diagram_generating_agent.agent import flowchart_agent
@@ -190,29 +191,6 @@ def search_google(query: str) -> str:
     return "According to a recent article, Newton's laws are..."
 
 from google.adk.agents import BaseAgent, InvocationContext
-from typing import Any
-
-# class FormatterRouterAgent(BaseAgent):
-#     @override
-#     async def _run_async_impl(
-#             self, ctx: InvocationContext
-#     ) -> AsyncGenerator[Event, None]:
-#         role = ctx.session.state["role"]
-#         if role == "teacher":
-#             async for event in teacher_formatter_agent._run_async_impl(ctx):
-#                 yield event
-#             # yield teacher_formatter_agent._run_async_impl(ctx)
-#         elif role == "parent":
-#             async for event in parent_formatter_agent._run_async_impl(ctx):
-#                 yield event
-#         elif role == "student":
-#             async for event in student_formatter_agent._run_async_impl(ctx):
-#                 yield event
-#         else:
-#             raise NotImplementedError(
-#                 f'role {ctx.session.state["role"]} is not supported.'
-#             )
-# formatter_router_agent = FormatterRouterAgent(name="FormatterRouterAgent")
 
 class QnAOrchestratorInput(BaseModel):
     query: str = Field(..., description="User's question or voice-transcribed input.")
@@ -241,10 +219,7 @@ qna_orchestrator_agent = LlmAgent(
         role_inspector_tool,
         agent_tool.AgentTool(agent=clarifier_agent),
         agent_tool.AgentTool(agent=rag_agent),
-        agent_tool.AgentTool(agent=teacher_formatter_agent),
-        agent_tool.AgentTool(agent=student_formatter_agent),
-        agent_tool.AgentTool(agent=parent_formatter_agent),
-        # agent_tool.AgentTool(agent=formatter_router_agent),
+        role_formatter_agent,
         agent_tool.AgentTool(agent=flowchart_agent),
         agent_tool.AgentTool(agent=translator_agent),
     ],
