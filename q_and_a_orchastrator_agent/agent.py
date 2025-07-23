@@ -19,7 +19,7 @@ class ClarifierInput(BaseModel):
     role: Literal["teacher", "parent", "student"] = Field(..., description="User's role to help shape clarifying response.")
 
 def rag_postprocess_callback(callback_context: CallbackContext, llm_response: LlmResponse) -> Optional[LlmResponse]:
-    callback_context.state["role"] = "teacher"
+    callback_context.state["role"] = "student"
     if llm_response.content and llm_response.content.parts:
         if llm_response.content.parts[0].text:
             original_text = llm_response.content.parts[0].text
@@ -49,7 +49,8 @@ rag_agent = LlmAgent(
     instruction="""
 You are connected to NCERT textbook content.
 
-Given a query and metadata like subject and chapter, retrieve relevant textbook content from the textbook.
+Given a query from the parameter clarified_query and metadata like subject and chapter, retrieve relevant textbook content from the textbook.
+And return the relevant content in under the key -> content
 
 Otherwise, return the most relevant answer from the textbook. Do not invent or guess.
 """,
@@ -223,7 +224,7 @@ processing_agent = SequentialAgent(
             1. Call RoleInspectorTool to get the user's role
             2. Call role_formatter_agent with:
                - role: user's role from step 1
-               - content: RAG response from previous step
+               - content: RAG response from previous step, which would've come under the key content
                - formatter_type: "qna"
             3. Handle the JSON response:
                - If error_logs is NOT empty: Return "I apologize, there was an issue formatting your answer. Please try asking your question again."
@@ -251,6 +252,7 @@ qna_orchestrator_agent = LlmAgent(
     3. **Call ProcessingAgent** to handle RAG retrieval and role-based formatting.
 
     IMPORTANT: Never call ProcessingAgent if clarification is needed. Always ask user first.
+    IMPORTANT: Do not call clarifierAgent once you receive the output from ProcessingAgent
     """,
     tools=[
         agent_tool.AgentTool(agent=clarifier_agent),
