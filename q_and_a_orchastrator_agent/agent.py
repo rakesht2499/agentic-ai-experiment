@@ -1,11 +1,14 @@
-from asyncio import Event
-from typing import Optional, AsyncGenerator, override
+from typing import Literal
+from typing import Optional, override
 
+from google.adk.agents import LlmAgent, SequentialAgent
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.agents import LlmAgent
 from google.adk.models import LlmResponse
-from google.adk.tools import agent_tool, google_search, BaseTool, ToolContext
+from google.adk.tools import agent_tool, BaseTool, ToolContext
+from pydantic import BaseModel, Field
 
+from common_agents import role_formatter_agent
 from diagram_generating_agent.agent import diagram_generating_agent
 from models.constants import GEMINI_PRO_MODEL
 from q_and_a_orchastrator_agent.prompts import QNA_ORCHESTRATOR_PROMPT
@@ -18,7 +21,7 @@ class ClarifierInput(BaseModel):
     role: Literal["teacher", "parent", "student"] = Field(..., description="User's role to help shape clarifying response.")
 
 def rag_postprocess_callback(callback_context: CallbackContext, llm_response: LlmResponse) -> Optional[LlmResponse]:
-    callback_context.state["role"] = "teacher"
+    callback_context.state["role"] = "student"
     if llm_response.content and llm_response.content.parts:
         if llm_response.content.parts[0].text:
             original_text = llm_response.content.parts[0].text
@@ -48,7 +51,8 @@ rag_agent = LlmAgent(
     instruction="""
 You are connected to NCERT textbook content.
 
-Given a query and metadata like subject and chapter, retrieve relevant textbook content from the textbook.
+Given a query from the parameter clarified_query and metadata like subject and chapter, retrieve relevant textbook content from the textbook.
+And return the relevant content in under the key -> content
 
 Otherwise, return the most relevant answer from the textbook. Do not invent or guess.
 """,
@@ -189,30 +193,7 @@ def search_google(query: str) -> str:
     # Mock or real implementation via SerpAPI / custom search
     return "According to a recent article, Newton's laws are..."
 
-from google.adk.agents import BaseAgent, InvocationContext
-from typing import Any
-
-# class FormatterRouterAgent(BaseAgent):
-#     @override
-#     async def _run_async_impl(
-#             self, ctx: InvocationContext
-#     ) -> AsyncGenerator[Event, None]:
-#         role = ctx.session.state["role"]
-#         if role == "teacher":
-#             async for event in teacher_formatter_agent._run_async_impl(ctx):
-#                 yield event
-#             # yield teacher_formatter_agent._run_async_impl(ctx)
-#         elif role == "parent":
-#             async for event in parent_formatter_agent._run_async_impl(ctx):
-#                 yield event
-#         elif role == "student":
-#             async for event in student_formatter_agent._run_async_impl(ctx):
-#                 yield event
-#         else:
-#             raise NotImplementedError(
-#                 f'role {ctx.session.state["role"]} is not supported.'
-#             )
-# formatter_router_agent = FormatterRouterAgent(name="FormatterRouterAgent")
+from google.adk.agents import InvocationContext
 
 class QnAOrchestratorInput(BaseModel):
     query: str = Field(..., description="User's question or voice-transcribed input.")
@@ -224,8 +205,6 @@ class QnAOrchestratorInput(BaseModel):
     language: Optional[str] = Field("english", description="Preferred language for output")
 
 
-from typing import Optional
-
 class RoleInspectorTool(BaseTool):
     @override
     async def run_async(self, context: InvocationContext, tool_context: ToolContext) -> str:
@@ -233,25 +212,55 @@ class RoleInspectorTool(BaseTool):
 
 role_inspector_tool = RoleInspectorTool(name="RoleInspectorTool", description="Inspects the current user role from the agent state context and returns it.")
 
+# --- Step 1: Processing Sequential Agent (RAG → Role Format) ---
+processing_agent = SequentialAgent(
+    name="ProcessingAgent",
+    sub_agents=[
+        rag_agent,
+        LlmAgent(
+            name="RoleFormatterAgent",
+            model=GEMINI_PRO_MODEL,
+            instruction="""
+            1. Call RoleInspectorTool to get the user's role
+            2. Call role_formatter_agent with:
+               - role: user's role from step 1
+               - content: RAG response from previous step, which would've come under the key content
+               - formatter_type: "qna"
+            3. Handle the JSON response:
+               - If error_logs is NOT empty: Return "I apologize, there was an issue formatting your answer. Please try asking your question again."
+               - If error_logs is empty: Return the formatter_content as the final response
+            """,
+            tools=[role_inspector_tool, role_formatter_agent]
+        )
+    ],
+    description="Handles RAG retrieval and role-based formatting sequentially"
+)
+
+# --- Step 2: Main Q&A Orchestrator (Clarity Check + Processing) ---
 qna_orchestrator_agent = LlmAgent(
     name="QnAOrchestratorAgent",
     model=GEMINI_PRO_MODEL,
-    instruction=QNA_ORCHESTRATOR_PROMPT,
+    instruction="""
+    You are a Q&A orchestrator with clear separation of concerns:
+
+    1. **First, call ClarifierAgent** to check if the user query is clear.
+
+    2. **Check the clarifier response**:
+       - If it contains "needs_clarification": true → Return the follow_up question directly to user and STOP
+       - If it contains "needs_clarification": false → Continue to step 3
+
+    3. **Call ProcessingAgent** to handle RAG retrieval and role-based formatting.
+
+    IMPORTANT: Never call ProcessingAgent if clarification is needed. Always ask user first.
+    IMPORTANT: Do not call clarifierAgent once you receive the output from ProcessingAgent
+    """,
     tools=[
-        role_inspector_tool,
         agent_tool.AgentTool(agent=clarifier_agent),
-        agent_tool.AgentTool(agent=rag_agent),
-        agent_tool.AgentTool(agent=teacher_formatter_agent),
-        agent_tool.AgentTool(agent=student_formatter_agent),
-        agent_tool.AgentTool(agent=parent_formatter_agent),
-        # agent_tool.AgentTool(agent=formatter_router_agent),
-        agent_tool.AgentTool(agent=diagram_generating_agent),
-        agent_tool.AgentTool(agent=translator_agent),
+        agent_tool.AgentTool(agent=processing_agent)
     ],
-    input_schema=QnAOrchestratorInput,
+    input_schema=QnAOrchestratorInput
 )
 
-
-root_agent=qna_orchestrator_agent
+root_agent = qna_orchestrator_agent
 
 
