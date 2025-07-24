@@ -11,7 +11,6 @@ from pydantic import BaseModel, Field
 from common_agents import role_formatter_agent
 from diagram_generating_agent.agent import diagram_generating_agent
 from models.constants import GEMINI_PRO_MODEL
-from q_and_a_orchastrator_agent.prompts import QNA_ORCHESTRATOR_PROMPT
 
 from pydantic import BaseModel, Field
 from typing import Literal
