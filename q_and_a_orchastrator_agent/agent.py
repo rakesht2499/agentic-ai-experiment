@@ -1,19 +1,15 @@
-from typing import Literal
-from typing import Optional, override
+from typing import Literal, Optional, override
 
 from google.adk.agents import LlmAgent, SequentialAgent
 from google.adk.agents.callback_context import CallbackContext
-from google.adk.agents import LlmAgent
 from google.adk.models import LlmResponse
-from google.adk.tools import agent_tool, BaseTool, ToolContext
+from google.adk.tools import agent_tool, BaseTool, ToolContext, google_search
 from pydantic import BaseModel, Field
+
 
 from common_agents import role_formatter_agent
 from diagram_generating_agent.agent import diagram_generating_agent
 from models.constants import GEMINI_PRO_MODEL
-
-from pydantic import BaseModel, Field
-from typing import Literal
 
 class ClarifierInput(BaseModel):
     query: str = Field(..., description="User input that may be vague or incomplete.")
@@ -112,6 +108,7 @@ teacher_formatter_agent = LlmAgent(
     Wrap with:
     - ✅ A 1-line recap
     - 📍 "Based on Chapter <chapter name>"
+    - 🔍 Then use a tool to search for a relevant video explanation in the user’s preferred language and share the link.
     """
 )
 
@@ -135,6 +132,7 @@ Structure:
 Wrap with:
 - ✅ “You did a great job explaining this!”
 - Mention TranslatorAgent only if language ≠ English.
+- 🔍 Then use a tool to search for a relevant video explanation in the preferred language and share the link.
 """
 )
 
@@ -159,6 +157,7 @@ Structure:
 Wrap with:
 - ✨ The memory hook
 - 📘 “Based on Chapter <chapter>”
+- 🔍 Then use a tool to search for a relevant video explanation in the preferred language and share the link.
 """
 )
 
@@ -182,8 +181,6 @@ translator_agent = LlmAgent(
     Be sensitive to dialect and readability.
     """,
     )
-
-from pydantic import BaseModel
 
 class SearchInput(BaseModel):
     query: str
@@ -218,18 +215,26 @@ processing_agent = SequentialAgent(
         rag_agent,
         LlmAgent(
             name="RoleFormatterAgent",
-            model=GEMINI_PRO_MODEL,
+            model="gemini-2.0-flash-exp",
             instruction="""
             1. Call RoleInspectorTool to get the user's role
             2. Call role_formatter_agent with:
                - role: user's role from step 1
                - content: RAG response from previous step, which would've come under the key content
                - formatter_type: "qna"
+               - language: user's preferred language if available
             3. Handle the JSON response:
                - If error_logs is NOT empty: Return "I apologize, there was an issue formatting your answer. Please try asking your question again."
                - If error_logs is empty: Return the formatter_content as the final response
+               - 🔍 Then use GoogleSearchTool to search for a relevant video explanation of the query in the user's preferred language. Append the search result & mention it was fetched from google search.
+               - if no class is mentioned then find out from NCERT books where this concept is mentioned and for that respective class search for the link to get better results.
+               - Display the query which you are using to search in youtube.
+               - Don't give more than 2 videos.
+               - Only add those links which are available on youtube and does not show "This video isn't available any more"
+               - Return the YouTube video link with a short message like:
+                    `🎥 Here's a video explanation I found for you: [video_title] — [video_url] (via Google Search)`
             """,
-            tools=[role_inspector_tool, role_formatter_agent]
+            tools=[role_inspector_tool, role_formatter_agent, google_search]
         )
     ],
     description="Handles RAG retrieval and role-based formatting sequentially"
@@ -251,7 +256,7 @@ qna_orchestrator_agent = LlmAgent(
     3. **Call ProcessingAgent** to handle RAG retrieval and role-based formatting.
 
     IMPORTANT: Never call ProcessingAgent if clarification is needed. Always ask user first.
-    IMPORTANT: Do not call clarifierAgent once you receive the output from ProcessingAgent
+    IMPORTANT: Do not call ClarifierAgent once you receive the output from ProcessingAgent
     """,
     tools=[
         agent_tool.AgentTool(agent=clarifier_agent),
