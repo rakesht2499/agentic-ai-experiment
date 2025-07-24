@@ -1,24 +1,28 @@
 import os
-from typing import List
+from typing import Literal, Optional
 from pydantic import BaseModel, Field
+
 from google.adk.agents import LlmAgent
 from google.adk.tools import agent_tool
 
+from common_agents.shared_rag_agent import shared_rag_agent
 from models.constants import GEMINI_PRO_MODEL
 
-# --- Input and Output Schemas --- #
+
 class SyllabusPlannerInput(BaseModel):
-    standard: str = Field(..., description="e.g., '10' for Class 10")
-    subject: str = Field(..., description="e.g., 'Science'")
-    scope: str = Field(..., description="'Full Year', 'Exam Window', or 'Custom Range'")
-    start_date: str = Field(..., description="Start date for planning in YYYY-MM-DD")
-    end_date: str = Field(..., description="End date for planning in YYYY-MM-DD")
+    scope: Literal["Full Year", "Exam Window", "Custom Range"] = Field(..., description="Planning duration")
+    start_date: str = Field(..., description="Start date in YYYY-MM-DD format")
+    end_date: str = Field(..., description="End date in YYYY-MM-DD format")
+    subject: str = Field(..., description="Subject name, e.g., Science")
+    standard: str = Field(..., description="Grade level, e.g., Class 8")
+
 
 class SyllabusPlannerOutput(BaseModel):
-    validated: bool = Field(..., description="Whether input was valid and sufficient")
-    topic_list: List[str] = Field(..., description="List of topics extracted from NCERT for planning")
-    syllabus_calendar: str = Field(..., description="Calendar plan spread across weeks or dates")
-    refinement_question: str = Field(..., description="Follow-up question to personalize or clarify planning")
+    validated: bool = Field(..., description="Whether the input has been validated")
+    topic_list: Optional[str] = Field("", description="List of NCERT topics")
+    syllabus_calendar: Optional[str] = Field("", description="Week-wise or date-wise calendar")
+    refinement_question: Optional[str] = Field("", description="Follow-up question for improvement")
+
 
 # --- Sub-Agents --- #
 
@@ -36,18 +40,6 @@ scope_clarifier = LlmAgent(
     If complete:
       - validated = True
       - refinement_question = ""
-    """,
-    output_schema=SyllabusPlannerOutput
-)
-
-# 2. Topic Fetcher Agent (RAG-based)
-rag_topic_fetcher = LlmAgent(
-    name="RagAgent",
-    model=GEMINI_PRO_MODEL,
-    instruction="""
-    Fetch NCERT topics based on standard and subject.
-    Output must be a clean list of topic titles, one per line.
-    Do NOT include explanations or commentary.
     """,
     output_schema=SyllabusPlannerOutput
 )
@@ -100,22 +92,26 @@ root_agent = LlmAgent(
     1. Validate the scope and dates using ScopeClarifierAgent.
        - If validated=False, return refinement_question and stop.
 
-    2. Fetch NCERT topic list using RagAgent based on subject and standard.
+    2. Fetch NCERT topic list using SharedRagAgent based on subject and standard.
+       - SharedRagAgent returns structured output: {"subject": "Science", "class_": "Class 10", "content": "topic list..."}
+       - Extract the topic list from the content field
+       - If content field contains "RAG_RETRIEVAL_FAILED", use a fallback topic list for the subject
 
     3. Map the topic list to a date-wise plan using CalendarMapperAgent.
+       - Pass the extracted topic list from SharedRagAgent's content field
        - Ensure balanced distribution.
 
     4. Ask a helpful refinement question using PlannerRefinerAgent.
 
     Final Output:
     - validated
-    - topic_list
+    - topic_list (extracted from SharedRagAgent content field)
     - syllabus_calendar
     - refinement_question
     """,
     tools=[
         agent_tool.AgentTool(agent=scope_clarifier),
-        agent_tool.AgentTool(agent=rag_topic_fetcher),
+        agent_tool.AgentTool(agent=shared_rag_agent),
         agent_tool.AgentTool(agent=calendar_mapper),
         agent_tool.AgentTool(agent=planner_refiner)
     ]

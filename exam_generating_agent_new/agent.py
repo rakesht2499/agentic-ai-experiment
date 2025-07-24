@@ -1,40 +1,14 @@
 from typing import List, Literal, Optional, override
 from pydantic import BaseModel, Field
 from google.adk.agents import LlmAgent, SequentialAgent, InvocationContext
-from google.adk.agents.callback_context import CallbackContext
-from google.adk.models import LlmResponse
 from google.adk.tools import agent_tool, BaseTool, ToolContext
 
 from common_agents import role_formatter_agent
+from common_agents.shared_rag_agent import shared_rag_agent, shared_rag_role_inspector
 from exam_generating_agent_new.prompts import QUIZ_PREP_ORCHESTRATOR_PROMPT
 from models.constants import GEMINI_FLASH_MODEL, GEMINI_PRO_MODEL
 
 from exam_generating_agent_new.prompts import instructions_for_question_input_validator
-
-
-def quiz_rag_postprocess_callback(callback_context: CallbackContext, llm_response: LlmResponse) -> Optional[LlmResponse]:
-    callback_context.state["role"] = "student"  # Will be overridden by orchestrator input
-    if llm_response.content and llm_response.content.parts:
-        if llm_response.content.parts[0].text:
-            original_text = llm_response.content.parts[0].text
-            print(f"[Quiz Callback] Inspected original response text: '{original_text[:100]}...'")
-            if original_text == "RAG_RETRIEVAL_FAILED":
-                callback_context.state["rag_failed"] = True
-            else:
-                callback_context.state["rag_failed"] = False
-            return llm_response
-        elif llm_response.content.parts[0].function_call:
-            print(f"[Quiz Callback] Inspected response: Contains function call '{llm_response.content.parts[0].function_call.name}'. No text modification.")
-            return None
-        else:
-            print("[Quiz Callback] Inspected response: No text content found.")
-            return None
-    elif llm_response.error_message:
-        print(f"[Quiz Callback] Inspected response: Contains error '{llm_response.error_message}'. No modification.")
-        return None
-    else:
-        print("[Quiz Callback] Inspected response: Empty LlmResponse.")
-        return None
 
 
 class QuestionGenerationInput(BaseModel):
@@ -106,7 +80,7 @@ clarifier_agent = LlmAgent(
     ## ⚠️ Important Notes
     
     - `"role"` is a **critical path field** because it determines formatting agent.
-    - If it's missing and you don’t clarify it → formatter routing fails or becomes ambiguous.
+    - If it's missing and you don't clarify it → formatter routing fails or becomes ambiguous.
     - This updated instruction also encourages **natural language clarifying questions**.
     """,
     input_schema=QuestionGenerationInput
@@ -119,26 +93,6 @@ input_validator_agent = LlmAgent(
     model=GEMINI_FLASH_MODEL,
     instruction=instructions_for_question_input_validator,
 )
-
-rag_agent = LlmAgent(
-    name="RagAgent",
-    model=GEMINI_PRO_MODEL,
-    instruction="""
-You are connected to NCERT textbook content.
-
-Given a query and metadata like subject and chapter, retrieve relevant textbook content from the textbook.
-
-Otherwise, return the most relevant answer from the textbook. Do not invent or guess.
-""",
-    after_model_callback=quiz_rag_postprocess_callback
-)
-
-class RoleInspectorTool(BaseTool):
-    @override
-    async def run_async(self, context: InvocationContext, tool_context: ToolContext) -> str:
-        return context.session.state.get("role", "unknown")
-
-role_inspector_tool = RoleInspectorTool(name="RoleInspectorTool", description="Inspects the current user role from the agent state context and returns it.")
 
 class QuizPrepTool(BaseTool):
     name = "QuizPrepTool"
@@ -165,7 +119,7 @@ class QuizPrepTool(BaseTool):
     - 👩‍👧 **Parent** → Friendly tone, questions should be supportive and engaging for kids.
     - 👨‍🎓 **Student** → Encouraging tone. Add a mix of simple and challenging questions.
 
-    ⚠️ Don’t repeat questions if the tool is called multiple times.
+    ⚠️ Don't repeat questions if the tool is called multiple times.
     📌 Prefer real-world relatable examples when possible.
     """
 
@@ -179,19 +133,28 @@ quiz_generator_agent = LlmAgent(
     instruction="""
 You are an AI educator tasked with generating highly engaging and non-repetitive quiz or exam questions.
 
+You will receive input from the previous step (SharedRagAgent) in the format:
+{"subject": "Science", "class_": "Class 10", "content": "NCERT textbook content..."}
+
+Process:
+1. Extract the subject, class, and textbook content from the previous step
+2. Use the QuizPrepTool to fetch additional parameters (role, mode, language, etc.)
+3. Generate questions based on the textbook content and quiz parameters
+
 Always use the QuizPrepTool to fetch:
-- Class
-- Subject
+- Class (verify against SharedRagAgent output)
+- Subject (verify against SharedRagAgent output)  
 - Mode (quiz or exam)
 - Chapters (if specified)
 - Role-specific tone
 - Language preference
 - Question count
 
-✅ Your job is to generate only the questions — do NOT explain answers.
+✅ Your job is to generate only the questions based on the NCERT content from SharedRagAgent — do NOT explain answers.
+✅ If the content field contains "RAG_RETRIEVAL_FAILED", create general questions for the subject/class and mention the limitation.
 ✅ Avoid repetition in wording or structure even across multiple calls.
 ✅ Always follow the tone appropriate to the role (teacher, parent, or student).
-✅ Align with NCERT-style content and level.
+✅ Align questions with the specific NCERT content provided by SharedRagAgent.
 """,
     tools=[quiz_prep_tool],
 )
@@ -200,13 +163,13 @@ Always use the QuizPrepTool to fetch:
 processing_agent = SequentialAgent(
     name="ProcessingAgent",
     sub_agents=[
-        rag_agent,
+        shared_rag_agent,
         quiz_generator_agent,
         LlmAgent(
             name="RoleFormatterAgent",
             model=GEMINI_PRO_MODEL,
             instruction="""
-            1. Call RoleInspectorTool to get the user's role
+            1. Call shared_rag_role_inspector to get the user's role
             2. Call role_formatter_agent with:
                - role: user's role from step 1
                - content: Quiz content from previous step
@@ -215,7 +178,7 @@ processing_agent = SequentialAgent(
                - If error_logs is NOT empty: Return "I apologize, there was an issue formatting your quiz. Please try again."
                - If error_logs is empty: Return the formatter_content as the final response
             """,
-            tools=[role_inspector_tool, role_formatter_agent]
+            tools=[shared_rag_role_inspector, role_formatter_agent]
         )
     ],
     description="Handles RAG retrieval, quiz generation, and role-based formatting sequentially"
@@ -225,18 +188,23 @@ quiz_prep_orchestrator_agent = LlmAgent(
     name="QuizPrepOrchestratorAgent",
     model=GEMINI_PRO_MODEL,
     instruction="""
-    You are a quiz/exam generation orchestrator with clear separation of concerns:
+    You are a strict quiz/exam generation orchestrator. Follow these rules exactly:
 
-    1. **First, call QuizClarifierAgent** to check if the user input is complete and clear.
+    1. **First**, call QuizClarifierAgent to validate the completeness of the user's input.
 
-    2. **Check the clarifier response**:
-       - If it contains "needs_clarification": true → Return the follow_up question directly to user and STOP
-       - If it contains "needs_clarification": false → Continue to step 3
+    2. If `needs_clarification` is true in the clarifier response:
+       - Immediately return the follow-up clarification question and STOP processing.
 
-    3. **Call ProcessingAgent** to handle RAG retrieval, quiz generation, and role-based formatting.
+    3. If `needs_clarification` is false:
+       - Proceed by calling ProcessingAgent.
 
-    IMPORTANT: Never call ProcessingAgent if clarification is needed. Always ask user first.
-    IMPORTANT: Do not call clarifierAgent once you receive the output from ProcessingAgent
+    ⚠️ CRITICAL INSTRUCTIONS:
+    - NEVER re-call QuizClarifierAgent after the ProcessingAgent finishes.
+    - NEVER return quiz questions to a teacher WITHOUT answers if they exist.
+    - Always clearly label the answer section (e.g., "Answer Key").
+    - Do Not modify anything from what processing_agent is returnung
+
+    Any deviation from these instructions will be considered a critical failure.
     """,
     input_schema=QuestionGenerationInput,
     tools=[

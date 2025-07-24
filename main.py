@@ -42,11 +42,10 @@ if __name__ == "__main__":
         ],
         extra_packages=[
             "./shahayak_agent",
-            "./q_and_a_agent",
+            "./answer_processor_agent",
             "./diagram_generating_agent",
             "./image_generating_agent",
             "./lesson_planning_agent",
-            "./rag_agent",
             "upload_textbook_to_index",
         ],
     )
