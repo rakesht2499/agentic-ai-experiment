@@ -3,7 +3,7 @@ from google.adk.tools import agent_tool
 
 from exam_generating_agent_new.agent import root_agent as exam_generating_agent
 from lesson_planning_agent.agent import root_agent as lesson_planning_agent
-from q_and_a_orchastrator_agent.agent import qna_orchestrator_agent
+from answer_orchestrator_agent.agent import answer_orchestrator_agent
 from syllabus_planning_agent.agent import root_agent as syllabus_planning_agent
 from diagram_generating_agent.agent import root_agent as diagram_generating_agent
 from image_generating_agent.agent import root_agent as image_generating_agent
@@ -189,7 +189,7 @@ root_agent = LlmAgent(
     model=GEMINI_FLASH_MODEL,
     instruction=instruction_prompt_root_agent,
     tools=[
-        createToolFromAgent(qna_orchestrator_agent),
+        createToolFromAgent(answer_orchestrator_agent),
         createToolFromAgent(diagram_generating_agent),
         createToolFromAgent(image_generating_agent),
         createToolFromAgent(exam_generating_agent),

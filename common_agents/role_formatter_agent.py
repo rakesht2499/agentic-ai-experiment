@@ -272,7 +272,7 @@ role_formatter_agent = RoleFormatterAgent()
 
 # Usage example for orchestrators:
 """
-# In QnAOrchestratorAgent or QuizPrepOrchestratorAgent:
+# In AnswerOrchestratorAgent or QuizPrepOrchestratorAgent:
 
 from common_agents.role_formatter_agent import role_formatter_agent
 

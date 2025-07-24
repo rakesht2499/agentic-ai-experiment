@@ -189,7 +189,7 @@ def search_google(query: str) -> str:
 
 from google.adk.agents import InvocationContext
 
-class QnAOrchestratorInput(BaseModel):
+class AnswerOrchestratorInput(BaseModel):
     query: str = Field(..., description="User's question or voice-transcribed input.")
     role: Literal["teacher", "parent", "student"] = Field(..., description="Role of the user.")
     board: str
@@ -230,12 +230,12 @@ processing_agent = SequentialAgent(
     description="Handles RAG retrieval and role-based formatting sequentially"
 )
 
-# --- Step 2: Main Q&A Orchestrator (Clarity Check + Processing) ---
-qna_orchestrator_agent = LlmAgent(
-    name="QnAOrchestratorAgent",
+# --- Step 2: Main Answer Orchestrator (Clarity Check + Processing) ---
+answer_orchestrator_agent = LlmAgent(
+    name="AnswerOrchestratorAgent",
     model=GEMINI_PRO_MODEL,
     instruction="""
-    You are a Q&A orchestrator with clear separation of concerns:
+    You are an answer orchestrator with clear separation of concerns:
 
     1. **First, call ClarifierAgent** to check if the user query is clear.
 
@@ -252,9 +252,9 @@ qna_orchestrator_agent = LlmAgent(
         agent_tool.AgentTool(agent=clarifier_agent),
         agent_tool.AgentTool(agent=processing_agent)
     ],
-    input_schema=QnAOrchestratorInput
+    input_schema=AnswerOrchestratorInput
 )
 
-root_agent = qna_orchestrator_agent
+root_agent = answer_orchestrator_agent
 
 
