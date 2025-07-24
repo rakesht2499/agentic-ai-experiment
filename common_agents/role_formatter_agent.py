@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Literal, override, List
+from typing import Literal, override, List, Optional
 
 from google.adk.agents import InvocationContext, LlmAgent
 from google.adk.tools import BaseTool, ToolContext
@@ -11,6 +11,7 @@ class RoleFormatterInput(BaseModel):
     role: Literal["teacher", "student", "parent"] = Field(description="The role of the user")
     content: str = Field(description="The content to be formatted.")
     formatter_type: Literal["qna", "quiz"] = Field(description="The decider whether to use qna formatter or quiz formatter.")
+    language: Optional[str] = Field(default="English", description="The desired language for localization.")
 
 class RoleFormatterOutput(BaseModel):
     formatter_content: str = Field(description="The formatted content to be formatted.")
@@ -22,15 +23,15 @@ class BaseContentFormatter(ABC):
     """Abstract base class for content-specific formatters"""
     
     @abstractmethod
-    def format_for_teacher(self, content: str) -> str:
+    def format_for_teacher(self, content: str, language: Optional[str] = "English") -> str:
         pass
     
     @abstractmethod 
-    def format_for_student(self, content: str) -> str:
+    def format_for_student(self, content: str, language: Optional[str] = "English") -> str:
         pass
         
     @abstractmethod
-    def format_for_parent(self, content: str) -> str:
+    def format_for_parent(self, content: str, language: Optional[str] = "English") -> str:
         pass
 
 class QnAFormatter(BaseContentFormatter):
@@ -110,15 +111,15 @@ Wrap with:
 """
         )
     
-    def format_for_teacher(self, content: str) -> str:
+    def format_for_teacher(self, content: str, language: Optional[str] = "English") -> str:
         response = self.teacher_agent.run(content)
         return response.content.parts[0].text if response.content and response.content.parts else content
     
-    def format_for_student(self, content: str) -> str:
+    def format_for_student(self, content: str, language: Optional[str] = "English") -> str:
         response = self.student_agent.run(content)
         return response.content.parts[0].text if response.content and response.content.parts else content
         
-    def format_for_parent(self, content: str) -> str:
+    def format_for_parent(self, content: str, language: Optional[str] = "English") -> str:
         response = self.parent_agent.run(content)
         return response.content.parts[0].text if response.content and response.content.parts else content
 
@@ -200,18 +201,52 @@ At the end:
     """
         )
     
-    def format_for_teacher(self, content: str) -> str:
+    def format_for_teacher(self, content: str, language: Optional[str] = "English") -> str:
         response = self.teacher_agent.run(content)
         return response.content.parts[0].text if response.content and response.content.parts else content
     
-    def format_for_student(self, content: str) -> str:
+    def format_for_student(self, content: str, language: Optional[str] = "English") -> str:
         response = self.student_agent.run(content)
         return response.content.parts[0].text if response.content and response.content.parts else content
         
-    def format_for_parent(self, content: str) -> str:
+    def format_for_parent(self, content: str, language: Optional[str] = "English") -> str:
         response = self.parent_agent.run(content)
         return response.content.parts[0].text if response.content and response.content.parts else content
 
+class LocalizedStoryFormatter(BaseContentFormatter):
+    def __init__(self):
+        self.agent = LlmAgent(
+            name="LocalizedStoryFormatter",
+            model=GEMINI_PRO_MODEL,
+            instruction="""
+You are a culturally aware educational content creator.
+
+Your task is to generate a simple and culturally contextualized story in the specified regional language to help students understand a concept.
+
+Requirements:
+- Use local names and places
+- Keep the tone friendly and informal
+- Keep it short and easy to follow
+- Respond only in the specified language
+            """
+        )
+
+    def _generate_story(self, content: str, language: str) -> str:
+        prompt = f"""
+Generate a short story in {language} to explain the following concept in a culturally relevant way:
+"{content}"
+"""
+        response = self.agent.run(prompt)
+        return response.content.parts[0].text if response.content and response.content.parts else content
+
+    def format_for_teacher(self, content: str, language: Optional[str] = "English") -> str:
+        return self._generate_story(content, language)
+
+    def format_for_student(self, content: str, language: Optional[str] = "English") -> str:
+        return self._generate_story(content, language)
+
+    def format_for_parent(self, content: str, language: Optional[str] = "English") -> str:
+        return self._generate_story(content, language)
 
 class RoleFormatterAgent(BaseTool):
     """
@@ -229,6 +264,7 @@ class RoleFormatterAgent(BaseTool):
         self.formatters = {
             "qna": QnAFormatter(),
             "quiz": QuizFormatter(),
+            "localized_story": LocalizedStoryFormatter(),
         }
     
     @override
@@ -238,6 +274,7 @@ class RoleFormatterAgent(BaseTool):
         content = input_data["content"]
         formatter_type = input_data["formatter_type"]
         role = context.session.state.get("role", "unknown")
+        language = input_data.language or "English"
         
         # Log the formatting operation
         logs = [f"Formatting {formatter_type} content for role: {role}"]
