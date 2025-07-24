@@ -87,7 +87,7 @@ class OrchestratorOutput(BaseModel):
     image_file_path: str = Field(description="The local file path of the generated image.")
     final_caption: str = Field(description="The final caption for the image.")
 
-root_agent = SequentialAgent(
+image_generating_agent = SequentialAgent(
     name="image_generating_agent",
     sub_agents=[
         prompt_refiner_agent,
@@ -95,3 +95,5 @@ root_agent = SequentialAgent(
         image_generation_agent,
     ]
 )
+
+root_agent=image_generating_agent

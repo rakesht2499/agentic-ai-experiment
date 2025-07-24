@@ -6,9 +6,9 @@ from google.adk.agents import LlmAgent
 from google.adk.models import LlmResponse
 from google.adk.tools import agent_tool, google_search, BaseTool, ToolContext
 
+from diagram_generating_agent.agent import diagram_generating_agent
 from models.constants import GEMINI_PRO_MODEL
 from q_and_a_orchastrator_agent.prompts import QNA_ORCHESTRATOR_PROMPT
-from diagram_generating_agent.agent import flowchart_agent
 
 from pydantic import BaseModel, Field
 from typing import Literal
@@ -245,7 +245,7 @@ qna_orchestrator_agent = LlmAgent(
         agent_tool.AgentTool(agent=student_formatter_agent),
         agent_tool.AgentTool(agent=parent_formatter_agent),
         # agent_tool.AgentTool(agent=formatter_router_agent),
-        agent_tool.AgentTool(agent=flowchart_agent),
+        agent_tool.AgentTool(agent=diagram_generating_agent),
         agent_tool.AgentTool(agent=translator_agent),
     ],
     input_schema=QnAOrchestratorInput,
