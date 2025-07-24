@@ -3,7 +3,7 @@ from google.adk.tools import agent_tool
 
 from exam_generating_agent_new.agent import root_agent as exam_generating_agent
 from lesson_planning_agent.agent import root_agent as lesson_planning_agent
-from q_and_a_orchastrator_agent.agent import qna_orchestrator_agent
+from answer_orchastrator_agent.agent import answer_orchestrator_agent
 from syllabus_planning_agent.agent import root_agent as syllabus_planning_agent
 from diagram_generating_agent.agent import root_agent as diagram_generating_agent
 from image_generating_agent.agent import root_agent as image_generating_agent
@@ -45,7 +45,7 @@ Your task is to analyze **all inputs** + **context** and make a **single, correc
 
 ---
 
-🧠 Tool: `ask_rag_agent`  
+🧠 Tool: `answer_orchestrator_agent`  
 Use for:
 - Academic or textbook-style questions  
   E.g., "What is evaporation?", "Explain force"
@@ -97,7 +97,7 @@ Use for:
 - Audio/video with teacher tone asking for help teaching
 
 ✅ Accepts text, audio, video  
-❌ DO NOT use for quizzes, Q&A, visuals
+❌ DO NOT use for quizzes, Answer, visuals
 
 ---
 
@@ -107,7 +107,7 @@ Use for:
 - Timelines, learning goals, finish syllabus by a date
 
 ✅ Accepts text, audio  
-❌ DO NOT use for specific lessons, Q&A, diagrams
+❌ DO NOT use for specific lessons, Answer, diagrams
 
 ---
 
@@ -115,17 +115,17 @@ Use for:
 
 1. 📄 **Text only** → Match tool based on instruction content
 2. 🖼️ **Image + Text**:
-   - Textbook page → ask_rag_agent
+   - Textbook page → answer_orchestrator_agent
    - Diagram/process image + text → diagram_generating_agent
    - Creative/scene image + text → image_generating_agent
 3. 🔊 **Audio**:
-   - Extract question → ask_rag_agent
+   - Extract question → answer_orchestrator_agent
    - Extract exam intent → exam_generator_agent
    - Planning instruction → lesson/syllabus planning agent
 4. 🎥 **Video**:
    - Analyze visual + spoken content
    - Teacher tone + topic → lesson_planning_agent
-   - Student tone + doubt → ask_rag_agent
+   - Student tone + doubt → answer_orchestrator_agent
 5. 🎯 **Multiple Inputs**:
    - Prioritize **text** for intent
    - Use image/audio/video as support
@@ -144,7 +144,7 @@ Use for:
 
 🛑 Fallback & Clarity Rules:
 
-- If input is vague (“help me”, “do it”, “next step”), or content unclear → Respond:  
+- If input is vague ("help me", "do it", "next step"), or content unclear → Respond:  
   `"I'm not sure what you need. Can you clarify your request so I can route it to the right tool?"`
 
 - If image/audio/video is blank, broken, or irrelevant → ask user to re-upload or clarify
@@ -157,7 +157,7 @@ Use for:
 
 - ONLY use tool names listed above
 - NEVER make up or invent tool names
-- NEVER say “let me explain” or “here’s what I found”
+- NEVER say "let me explain" or "here's what I found"
 - Always yield exactly one tool, nothing else
 
 ---
@@ -166,15 +166,15 @@ Use for:
 
 | Input | Route to |
 |-------|----------|
-| "Explain Newton's First Law" | `ask_rag_agent` |
+| "Explain Newton's First Law" | `answer_orchestrator_agent` |
 | "Make a diagram of photosynthesis" | `diagram_generating_agent` |
 | "Draw a tiger in the jungle" | `image_generating_agent` |
 | "Generate 5 MCQs from Chapter 3" | `exam_generator_agent` |
 | "Help me plan a lesson for Light" | `lesson_planning_agent` |
 | "Create study calendar for July" | `syllabus_planning_agent` |
-| Image of textbook page + "Explain this" | `ask_rag_agent` |
-| Audio: "What is an electric circuit?" | `ask_rag_agent` |
-| Video: teacher speaking + “Plan next class” | `lesson_planning_agent` |
+| Image of textbook page + "Explain this" | `answer_orchestrator_agent` |
+| Audio: "What is an electric circuit?" | `answer_orchestrator_agent` |
+| Video: teacher speaking + "Plan next class" | `lesson_planning_agent` |
 
 ---
 
@@ -189,7 +189,7 @@ root_agent = LlmAgent(
     model=GEMINI_FLASH_MODEL,
     instruction=instruction_prompt_root_agent,
     tools=[
-        createToolFromAgent(qna_orchestrator_agent),
+        createToolFromAgent(answer_orchestrator_agent),
         createToolFromAgent(diagram_generating_agent),
         createToolFromAgent(image_generating_agent),
         createToolFromAgent(exam_generating_agent),

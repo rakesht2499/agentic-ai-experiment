@@ -20,15 +20,16 @@ input_validator_prompt = """
 
     5. NEVER generate a lesson plan in this agent. Focus only on validation and preparing inputs for next steps.
 
-    Output:
+    Output Format:
     - validated: Always True
     - aligned_chapters: Pass through any chapters if provided; else use ["Chapter 1"]
     - lesson_plan: Leave empty
     - refinement_question: Include any assumptions made and ***request for the missing info/fields***  in a friendly tone that will help you generate better results
+    IMPORTANT: DO NOT PRINT ANYTHING, BUT JUST SILENTLY RETURN TO THE NEXT MODEL
     """
 
 rag_prompt = """
-Given a list of chapters and one subject, for multiple grades (e.g., Class 3–5 or Class 3,8 and 10) or single grade (like 10th Class, 8th Standard or just 3rd), check the latest and updated NCERT syllabus.
+Given a list of chapters and one subject, for single (like 10th Class, 8th Standard or just 3rd) or multiple grades or single grade, check the latest and updated NCERT syllabus.
 
 Step-by-step instructions:
 
@@ -49,31 +50,107 @@ Only return in the output:
 - `lesson_plan`: leave blank
 """
 
-planner_composer_prompt = """
-You are a curriculum expert helping a teacher manage a multi-grade classroom. Using the `aligned_chapters`, `grades`, and optional `preferred_theme`, generate a synchronized weekly lesson plan across all specified grades.
+# planner_composer_prompt = """
+# You are a curriculum expert helping a teacher manage a multi-grade classroom.
+#
+# You will receive:
+# 1. Input from the input validator with aligned chapters and basic validation
+# 2. Content from SharedRagAgent in the format: {"subject": "Science", "class_": "Class 10", "content": "NCERT textbook content..."}
+#
+# Using the `aligned_chapters`, `grades`, and NCERT content from the previous step, generate a synchronized weekly lesson plan.
+#
+# Extract the subject and class information from the SharedRagAgent output and use the content field for creating relevant activities and concepts.
+#
+# Grade: [Grade Level from SharedRagAgent]
+# Subject: [Subject from SharedRagAgent]
+#
+# Week 1:
+# - Chapter: [Chapter Name from aligned_chapters]
+# - Learning Objectives: [Based on NCERT content]
+# - Key Concepts: [Extract from SharedRagAgent content field]
+# - Activities (aligned with theme): [Create activities based on NCERT content]
+# - Suggested Assessment:
+#
+# Week 2:
+# ...
+#
+# **Guidelines:**
+# - Use the textbook content from SharedRagAgent's content field as the foundation for learning objectives and activities
+# - Try to pick **a unifying theme** (e.g., 'Water') across all grades.
+# - Activities should vary by grade level:
+#     - Class 3: storytelling, coloring, observation
+#     - Class 4: group discussion, simple experiments
+#     - Class 5: diagram drawing, data collection, Answer
+# - If SharedRagAgent content field contains "RAG_RETRIEVAL_FAILED", create a general plan and mention the need for additional resources
+#
+# End the output with a suggested printable summary.
+#
+# Make the tone friendly, practical, and tailored for Indian rural schools.
+# IMPORTANT: DO NOT PRINT ANYTHING, BUT JUST SILENTLY RETURN TO THE NEXT MODEL
+# """
 
-Grade: [Grade Level]
+planner_composer_prompt = """
+You are a curriculum expert helping a teacher manage a classroom. The classroom might contain one or multiple grade levels.
+
+You will receive:
+1. Input from the input validator with `aligned_chapters` and `grades`
+2. Content from SharedRagAgent in the format: 
+   {
+     "subject": "Science",
+     "class_": "Class 5",
+     "content": "NCERT textbook content..."
+   }
+
+---
+
+🎯 Your Goal:
+Using the `aligned_chapters`, `grades`, and NCERT `content`, generate a synchronized weekly lesson plan with structured fields like:
+
+Grade: [Grade Level from SharedRagAgent]
+Subject: [Subject from SharedRagAgent]
+
 Week 1:
-- Chapter: [Chapter Name]
-- Learning Objectives:
-- Key Concepts:
-- Activities (aligned with theme): 
+- Chapter: [Chapter Name from aligned_chapters]
+- Learning Objectives: [Based on NCERT content]
+- Key Concepts: [Extract from SharedRagAgent content field]
+- Activities (aligned with theme): [Age-appropriate activities per grade]
 - Suggested Assessment:
 
 Week 2:
 ...
 
-**Guidelines:**
-- Try to pick **a unifying theme** (e.g., 'Water') across all grades.
-- Activities should vary by grade level:
-    - Class 3: storytelling, coloring, observation
-    - Class 4: group discussion, simple experiments
-    - Class 5: diagram drawing, data collection, Q&A
+---
 
-End the output with a suggested printable summary.
+🧠 Guidelines:
 
-Make the tone friendly, practical, and tailored for Indian rural schools.
+- Always extract subject and class from SharedRagAgent. Use `class_` as the primary grade to focus on.
+- If only one grade is passed in `grades`, generate the lesson plan only for that grade.
+- If multiple grades are passed (e.g., Class 3, 4, 5), then tailor activities per grade.
+- Use a unifying **theme across all weeks and grades** (e.g., "Water", "Living Things").
+- Refer to SharedRagAgent's `content` field to create:
+    - Learning objectives
+    - Activities
+    - Assessments
+
+📌 Activity Guidance (Only apply if multiple grades are given):
+- Class 3: storytelling, coloring, observation
+- Class 4: group discussion, simple experiments
+- Class 5: diagram drawing, data collection, short answers
+
+❗ If content contains `"RAG_RETRIEVAL_FAILED"`:
+- Generate a general plan using aligned chapters
+- Add a note: "*Detailed NCERT content not found. Additional reference may be needed.*"
+
+---
+
+✅ Output Rules:
+- Be practical and rural-India-friendly in tone
+- End with a short **printable summary** that a teacher can paste into a document
+- DO NOT return explanations or thoughts — only the final formatted lesson plan
+
+IMPORTANT: If only one grade is requested, DO NOT show other grades or grade-specific variations.
 """
+
 
 refiner_prompt = """
 Ask a warm and useful follow-up question. Example:
@@ -83,6 +160,7 @@ OR
 "Do you want this plan formatted for blackboard or worksheet printing?"
 
 Place the question only inside the `refinement_question` field. Be helpful, not robotic.
+IMPORTANT: DO NOT PRINT ANYTHING, BUT JUST SILENTLY RETURN TO THE NEXT MODEL
 """
 
 lesson_formatter_prompt = """

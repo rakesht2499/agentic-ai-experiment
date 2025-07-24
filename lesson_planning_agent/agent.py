@@ -1,18 +1,19 @@
 import os
 import uuid
 from typing import List
-from pydantic import BaseModel, Field
-from google.adk.agents import LlmAgent
-from google.adk.agents import SequentialAgent, ParallelAgent
 
-from models.constants import GEMINI_FLASH_MODEL
+from google.adk.tools import agent_tool
+from pydantic import BaseModel, Field
+from google.adk.agents import LlmAgent, SequentialAgent
+
+from common_agents.shared_rag_agent import shared_rag_agent
 from lesson_planning_agent.prompts import (
     input_validator_prompt,
-    rag_prompt,
     planner_composer_prompt,
     refiner_prompt,
-    lesson_formatter_prompt
+    lesson_formatter_prompt,
 )
+from models.constants import GEMINI_FLASH_MODEL
 
 
 # --- Input and Output Models --- #
@@ -34,19 +35,11 @@ class LessonPlanOutput(BaseModel):
 # --- Sub-Agents --- #
 
 # 1. Input Validator Agent
-input_validator_agent = LlmAgent(
+clarifier_agent = LlmAgent(
     name="input_validator_agent",
     model=GEMINI_FLASH_MODEL,
     instruction=input_validator_prompt,
-    output_schema=LessonPlanOutput
-)
-
-# 2. RAG Agent
-rag_agent = LlmAgent(
-    name="rag_agent",
-    model=GEMINI_FLASH_MODEL,
-    instruction=rag_prompt,
-    output_schema=LessonPlanOutput
+    # output_schema=LessonPlanOutput
 )
 
 # 3. Planner Composer Agent
@@ -54,7 +47,7 @@ planner_composer_agent = LlmAgent(
     name="PlannerComposerAgent",
     model=GEMINI_FLASH_MODEL,
     instruction=planner_composer_prompt,
-    output_schema=LessonPlanOutput
+    # output_schema=LessonPlanOutput
 )
 
 # 4. Refiner Agent
@@ -62,28 +55,62 @@ refiner_agent = LlmAgent(
     name="RefinerAgent",
     model=GEMINI_FLASH_MODEL,
     instruction=refiner_prompt,
-    output_schema=LessonPlanOutput
+    # output_schema=LessonPlanOutput
 )
 
 formatter_agent = LlmAgent(
     name="LessonPlanFormatterAgent",
     model=GEMINI_FLASH_MODEL,
     instruction=lesson_formatter_prompt,
-    output_schema=LessonPlanOutput
 )
 
 
 # --- Root Agent: Lesson Planner Orchestrator --- #
-lesson_planning_agent = SequentialAgent(
-    name="lesson_planning_agent",
+processing_agent = SequentialAgent(
+    name="ProcessingAgent",
     description="Interactive lesson planning agent with NCERT alignment and multimodal guidance",
     sub_agents=[
-        input_validator_agent,
-        rag_agent,
+        shared_rag_agent,
         planner_composer_agent,
         refiner_agent,
         formatter_agent
     ],
 )
+
+lesson_planning_agent = LlmAgent(
+    name="LessonPlanningAgent",
+    model=GEMINI_FLASH_MODEL,
+    instruction="""
+You are a structured lesson planning orchestrator for a classroom-focused AI system. Your job is to coordinate between agents and return a weekly plan for the teacher. Follow the flow below **exactly**:
+
+---
+
+1. ✅ First, call the `ClarifierAgent` to ensure the input is complete and aligned.
+
+2. ❓ If the clarifier response has `needs_clarification = true`:
+   - Immediately return ONLY the `follow_up_question`.
+   - Do NOT proceed further.
+
+3. ✅ If `needs_clarification = false`:
+   - Proceed to call the `ProcessingAgent` to generate the full weekly lesson plan.
+
+---
+
+⚠️ CRITICAL INSTRUCTIONS — DO NOT VIOLATE:
+- NEVER call `ClarifierAgent` again after calling `ProcessingAgent`.
+- NEVER modify, enhance, simplify, or reformat the output returned by `ProcessingAgent`.
+- Do NOT inject tone changes, extra summaries, or section headings.
+- If `ProcessingAgent` already contains a summary or multi-week plan, return it exactly as is.
+
+---
+
+Your role is strictly that of an orchestrator. Any deviation from these steps will result in logic failure.
+""",
+    tools=[
+        agent_tool.AgentTool(agent=clarifier_agent),
+        agent_tool.AgentTool(agent=processing_agent)
+    ]
+)
+
 
 root_agent = lesson_planning_agent

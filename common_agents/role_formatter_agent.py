@@ -10,11 +10,11 @@ from models.constants import GEMINI_PRO_MODEL
 class RoleFormatterInput(BaseModel):
     role: Literal["teacher", "student", "parent"] = Field(description="The role of the user")
     content: str = Field(description="The content to be formatted.")
-    formatter_type: Literal["qna", "quiz"] = Field(description="The decider whether to use qna formatter or quiz formatter.")
+    formatter_type: Literal["answer", "quiz"] = Field(description="The decider whether to use qna formatter or quiz formatter.")
 
 class RoleFormatterOutput(BaseModel):
     formatter_content: str = Field(description="The formatted content to be formatted.")
-    formatter_type: Literal["qna", "quiz"] = Field(description="The decider whether to use qna formatter or quiz formatter.")
+    formatter_type: Literal["answer", "quiz"] = Field(description="The decider whether to use qna formatter or quiz formatter.")
     error_logs: List[str] = Field(description="A list of error logs to show in case of failure.")
 
 
@@ -33,13 +33,13 @@ class BaseContentFormatter(ABC):
     def format_for_parent(self, content: str) -> str:
         pass
 
-class QnAFormatter(BaseContentFormatter):
-    """Handles Q&A content formatting using the exact prompts from q_and_a_orchestrator_agent"""
+class AnswerFormatter(BaseContentFormatter):
+    """Handles Answer content formatting using the exact prompts from answer_orchestrator_agent"""
     
     def __init__(self):
         # Create LLM agents for each role with exact prompts from reference
         self.teacher_agent = LlmAgent(
-            name="QnATeacherFormatter",
+            name="AnswerTeacherFormatter",
             model=GEMINI_PRO_MODEL,
             instruction="""
     You are an expert teacher assistant helping a teacher explain a textbook concept to students in class.
@@ -64,7 +64,7 @@ class QnAFormatter(BaseContentFormatter):
         )
         
         self.parent_agent = LlmAgent(
-            name="QnAParentFormatter",
+            name="AnswerParentFormatter",
             model=GEMINI_PRO_MODEL,
             instruction="""
 You are a supportive helper guiding a parent in explaining a textbook concept to their child.
@@ -87,7 +87,7 @@ Wrap with:
         )
         
         self.student_agent = LlmAgent(
-            name="QnAStudentFormatter",
+            name="AnswerStudentFormatter",
             model=GEMINI_PRO_MODEL,
             instruction="""
 You are a cheerful, encouraging tutor helping a student understand a textbook concept.
@@ -227,7 +227,7 @@ class RoleFormatterAgent(BaseTool):
         
         # Initialize formatters using Strategy Pattern
         self.formatters = {
-            "qna": QnAFormatter(),
+            "answer": AnswerFormatter(),
             "quiz": QuizFormatter(),
         }
     
@@ -272,7 +272,7 @@ role_formatter_agent = RoleFormatterAgent()
 
 # Usage example for orchestrators:
 """
-# In QnAOrchestratorAgent or QuizPrepOrchestratorAgent:
+# In AnswerOrchestratorAgent or QuizPrepOrchestratorAgent:
 
 from common_agents.role_formatter_agent import role_formatter_agent
 
@@ -283,8 +283,8 @@ tools=[
 ]
 
 # Usage examples:
-# For Q&A content:
-# {"role": "teacher", "content": "RAG answer...", "content_type": "qna"}
+# For Answer content:
+# {"role": "teacher", "content": "RAG answer...", "content_type": "answer"}
 
 # For Quiz content:
 # {"role": "student", "content": "Generated quiz...", "content_type": "quiz"}
