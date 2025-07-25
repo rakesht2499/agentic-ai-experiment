@@ -1,2 +1,2 @@
 from . import agent
-from . import nltk_initializer
+# from . import nltk_initializer

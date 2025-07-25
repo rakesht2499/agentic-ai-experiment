@@ -6,7 +6,7 @@ from google.adk.tools import agent_tool
 from pydantic import BaseModel, Field
 from google.adk.agents import LlmAgent, SequentialAgent
 
-from common_agents.shared_rag_agent import shared_rag_agent
+from common_agents.shared_rag_agent import shared_rag_agent, clone_agent
 from lesson_planning_agent.prompts import (
     input_validator_prompt,
     planner_composer_prompt,
@@ -70,7 +70,7 @@ processing_agent = SequentialAgent(
     name="ProcessingAgent",
     description="Interactive lesson planning agent with NCERT alignment and multimodal guidance",
     sub_agents=[
-        shared_rag_agent,
+        clone_agent(shared_rag_agent, "lesson_plan"),
         planner_composer_agent,
         refiner_agent,
         formatter_agent

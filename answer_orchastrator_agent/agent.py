@@ -8,7 +8,7 @@ from google.adk.tools import agent_tool, BaseTool, ToolContext
 from pydantic import BaseModel, Field
 
 from common_agents import role_formatter_agent
-from common_agents.shared_rag_agent import shared_rag_agent, shared_rag_role_inspector, vector_rag_agent
+from common_agents.shared_rag_agent import shared_rag_agent, shared_rag_role_inspector, vector_rag_agent, clone_agent
 from models.constants import GEMINI_PRO_MODEL
 
 class ClarifierInput(BaseModel):
@@ -96,20 +96,20 @@ processing_agent = SequentialAgent(
     name="ProcessingAgent",
     sub_agents=[
         # uses vector based RAG agent
-        shared_rag_agent,
+        clone_agent(shared_rag_agent, "answer"),
         LlmAgent(
             name="RoleFormatterAgent",
             model=GEMINI_PRO_MODEL,
             instruction="""
-            You will receive structured output from the SharedRagAgent in the format:
+            You will receive structured output from the SharedRagAgent_answer in the format:
             {"subject": "Science", "class_": "Class 10", "content": "NCERT textbook content..."}
             
             Process:
             1. Call SharedRagRoleInspector to get the user's role
-            2. Extract the "content" field from the SharedRagAgent's output from the previous step
+            2. Extract the "content" field from the SharedRagAgent_answer's output from the previous step
             3. Call role_formatter_agent with:
                - role: user's role from step 1
-               - content: the extracted content field from SharedRagAgent (NOT the entire JSON structure)
+               - content: the extracted content field from SharedRagAgent_answer (NOT the entire JSON structure)
                - formatter_type: "answer"
             4. Handle the JSON response from role_formatter_agent:
                - If error_logs is NOT empty: Return "I apologize, there was an issue formatting your answer. Please try asking your question again."

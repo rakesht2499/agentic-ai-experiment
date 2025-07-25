@@ -9,7 +9,6 @@ import os
 from typing import Optional, Literal, List, Any
 
 from google.cloud.aiplatform_v1 import RetrieveContextsResponse
-from nltk.sentiment.util import output_markdown
 from pydantic import BaseModel, Field
 
 from dotenv import load_dotenv
@@ -225,7 +224,7 @@ rag_chunk_filter_agent = LlmAgent(
     }
     """,
     input_schema=ChunkFilterInput,
-    output_schema=ChunkFilterOutput
+    # output_schema=ChunkFilterOutput
 )
 
 class SharedRagInspectorTool(BaseTool):
@@ -357,8 +356,20 @@ shared_rag_agent = LlmAgent(
     """,
     after_model_callback=shared_rag_postprocess_callback,
     input_schema=SharedRagInput,
-    output_schema=SharedRagOutput
+    # output_schema=SharedRagOutput
 )
+
+from copy import deepcopy
+
+def clone_agent(agent: LlmAgent, name_suffix: str) -> LlmAgent:
+    return LlmAgent(
+        name=f"SharedRagAgent_{name_suffix}",
+        model=agent.model,
+        instruction=agent.instruction,
+        tools=deepcopy(agent.tools),
+        input_schema=agent.input_schema,
+        after_model_callback=agent.after_model_callback
+    )
 
 # Create role inspector tool instance
 shared_rag_role_inspector = SharedRagInspectorTool(
