@@ -124,7 +124,7 @@ Wrap with:
 
 
 class QuizFormatter(BaseContentFormatter):
-    """Handles Quiz/Exam content formatting using the exact prompts from exam_generating_agent_new"""
+    """Handles Quiz/Exam content formatting using the exact prompts from quiz_generating_agent"""
     
     def __init__(self):
         # Create LLM agents for each role with exact prompts from reference
