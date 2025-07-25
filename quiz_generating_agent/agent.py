@@ -4,11 +4,14 @@ from google.adk.agents import LlmAgent, SequentialAgent, InvocationContext
 from google.adk.tools import agent_tool, BaseTool, ToolContext
 
 from common_agents import role_formatter_agent
+from common_agents.gcs_uploader_tool import GcsUploaderTool
+from common_agents.pdf_generation_tool import generate_pdf_with_answers
 from common_agents.shared_rag_agent import shared_rag_agent, shared_rag_role_inspector
-from exam_generating_agent_new.prompts import QUIZ_PREP_ORCHESTRATOR_PROMPT
 from models.constants import GEMINI_FLASH_MODEL, GEMINI_PRO_MODEL
 
-from exam_generating_agent_new.prompts import instructions_for_question_input_validator
+from quiz_generating_agent.prompts import instructions_for_question_input_validator
+
+import os
 
 
 class QuestionGenerationInput(BaseModel):
@@ -86,8 +89,6 @@ clarifier_agent = LlmAgent(
     input_schema=QuestionGenerationInput
 )
 
-
-# 1. Input Validator Agent
 input_validator_agent = LlmAgent(
     name="QuestionInputValidatorAgent",
     model=GEMINI_FLASH_MODEL,
@@ -126,6 +127,43 @@ class QuizPrepTool(BaseTool):
         return prompt.strip()
 
 quiz_prep_tool = QuizPrepTool(name="QuizPrepToolAgent", description="Quiz Prep Tool")
+gcs_uploader_tool = GcsUploaderTool()
+
+# NEW PDF Generator Tool
+class PDFGeneratorTool(BaseTool):
+    def __init__(self):
+        super().__init__(
+            name="PDFGeneratorTool",
+            description = "Generates a PDF with questions and answers and uploads it to GCS."
+        )
+
+    @override
+    async def run_async(self, context: InvocationContext, tool_context: ToolContext) -> str:
+        input_data = context.input.dict()
+        questions: List[str] = input_data.get("questions", [])
+        answers: List[str] = input_data.get("answers", [])
+        subject: str = input_data.get("subject")
+        class_: str = input_data.get("class_")
+        mode: str = input_data.get("mode", "quiz")
+
+        filename = f"{subject}_{class_}_{mode}.pdf".replace(" ", "_").lower()
+        filepath = f"/tmp/{filename}"
+
+        generate_pdf_with_answers(questions, answers, filepath)  # implement this method
+
+        upload_input = {
+            "type": mode,
+            "path": filepath
+        }
+
+        # Reuse the uploader tool
+        await gcs_uploader_tool.run_async(
+            InvocationContext(input=upload_input), tool_context
+        )
+
+        return f"PDF successfully created and uploaded: {filepath}"
+
+# pdf_generator_tool = PDFGeneratorTool()
 
 quiz_generator_agent = LlmAgent(
     name="QuizGeneratorAgent",
@@ -165,6 +203,37 @@ processing_agent = SequentialAgent(
     sub_agents=[
         shared_rag_agent,
         quiz_generator_agent,
+
+        # NEW agent: Generate PDF with answers
+        LlmAgent(
+            name="QuizPDFGeneratorAgent",
+            model=GEMINI_PRO_MODEL,
+            instruction="""
+            You are a document publishing assistant.
+
+            Input will contain:
+            - questions: List of all generated questions
+            - answers: List of corresponding answers
+            - subject, class_, mode: for naming the output file
+
+            Process:
+            1. Format all questions neatly for printing
+            2. On a new page, format the answers under "Answer Key"
+            3. Generate a pdf out of questions & answers & store it in your local, then give me the path you've saved the file
+            4. Call gcs_uploader_tool with the following parameters:
+            ```json
+            local_file: Path to the local pdf file you created
+            gcs_uri:  gs://shahayak-agentic-ai-gpl-muskeeters/quiz/test_paper.pdf
+            content_type: "quiz"
+            ```
+
+            ✅ Output only the success message or failure info returned from gcs_uploader_tool
+            ❌ Do not modify questions or answers
+            """,
+            tools=[gcs_uploader_tool]
+        ),
+
+        # Existing role formatter
         LlmAgent(
             name="RoleFormatterAgent",
             model=GEMINI_PRO_MODEL,
@@ -181,30 +250,28 @@ processing_agent = SequentialAgent(
             tools=[shared_rag_role_inspector, role_formatter_agent]
         )
     ],
-    description="Handles RAG retrieval, quiz generation, and role-based formatting sequentially"
+    description="Handles RAG retrieval, quiz generation, PDF creation, and role-based formatting sequentially"
 )
 
-quiz_prep_orchestrator_agent = LlmAgent(
-    name="QuizPrepOrchestratorAgent",
+quiz_generating_agent = LlmAgent(
+    name="quiz_generating_agent",
     model=GEMINI_PRO_MODEL,
     instruction="""
-    You are a strict quiz/exam generation orchestrator. Follow these rules exactly:
+    You are the quiz/exam generation orchestrator.
 
-    1. **First**, call QuizClarifierAgent to validate the completeness of the user's input.
+    Step-by-step:
 
-    2. If `needs_clarification` is true in the clarifier response:
-       - Immediately return the follow-up clarification question and STOP processing.
+    1. First, call **QuizClarifierAgent** with the raw user input.
 
-    3. If `needs_clarification` is false:
-       - Proceed by calling ProcessingAgent.
+    2. If the response includes `"needs_clarification": true`, return the `"follow_up"` field as your output. Do NOT proceed further.
 
-    ⚠️ CRITICAL INSTRUCTIONS:
-    - NEVER re-call QuizClarifierAgent after the ProcessingAgent finishes.
-    - NEVER return quiz questions to a teacher WITHOUT answers if they exist.
-    - Always clearly label the answer section (e.g., "Answer Key").
-    - Do Not modify anything from what processing_agent is returnung
+    3. If `"needs_clarification": false`, extract `"clarified_input"` and use that as your **new input** to call **ProcessingAgent**.
 
-    Any deviation from these instructions will be considered a critical failure.
+    ⚠️ NEVER skip calling QuizClarifierAgent first.
+    ⚠️ NEVER assume any required field like `role` or `subject`—clarify it first.
+    ⚠️ If you proceed without clarified input, it may crash the tool due to schema validation failure.
+
+    ALWAYS trust clarified_input before passing it to any downstream agent or tool.
     """,
     input_schema=QuestionGenerationInput,
     tools=[
@@ -213,4 +280,4 @@ quiz_prep_orchestrator_agent = LlmAgent(
     ],
 )
 
-root_agent=quiz_prep_orchestrator_agent
+root_agent=quiz_generating_agent

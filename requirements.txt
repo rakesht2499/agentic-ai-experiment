@@ -8,3 +8,4 @@ cloudpickle==3.0.0
 llama-index==0.10.39
 deprecated>=1.2.14
 nltk>=3.8.1
+fpdf==1.7.2
