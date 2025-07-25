@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 from common_agents import role_formatter_agent
 from common_agents.shared_rag_agent import shared_rag_agent, shared_rag_role_inspector, vector_rag_agent, clone_agent
-from models.constants import GEMINI_PRO_MODEL
+from models.constants import GEMINI_FLASH_MODEL, GEMINI_PRO_MODEL
 
 class ClarifierInput(BaseModel):
     query: str = Field(..., description="User input that may be vague or incomplete.")
@@ -17,7 +17,7 @@ class ClarifierInput(BaseModel):
 
 clarifier_agent = LlmAgent(
     name="ClarifierAgent",
-    model=GEMINI_PRO_MODEL,
+    model=GEMINI_FLASH_MODEL,
     instruction="""
     You are an input clarification assistant.
     
@@ -53,7 +53,7 @@ class TranslatorInput(BaseModel):
 
 translator_agent = LlmAgent(
     name="TranslatorAgent",
-    model=GEMINI_PRO_MODEL,
+    model=GEMINI_FLASH_MODEL,
     instruction="""
     You are a responsible education-grade translator.
     
@@ -61,12 +61,11 @@ translator_agent = LlmAgent(
     
     - Accurate concept preservation
     - Simplified local language (avoid over-academic tone)
-    - No code-switching (don't mix English mid-sentence)
-    - No extra info — only translation
+    - Cultural adaptation where suitable
     
-    Be sensitive to dialect and readability.
-    """,
-    )
+    Respond with the translated content directly.
+    """
+)
 
 from pydantic import BaseModel
 
@@ -99,7 +98,7 @@ processing_agent = SequentialAgent(
         clone_agent(shared_rag_agent, "answer"),
         LlmAgent(
             name="RoleFormatterAgent",
-            model=GEMINI_PRO_MODEL,
+            model=GEMINI_FLASH_MODEL,
             instruction="""
             You will receive structured output from the SharedRagAgent_answer in the format:
             {"subject": "Science", "class_": "Class 10", "content": "NCERT textbook content..."}
@@ -126,7 +125,7 @@ processing_agent = SequentialAgent(
 # --- Step 2: Main Answer Orchestrator (Clarity Check + Processing) ---
 answer_orchestrator_agent = LlmAgent(
     name="AnswerOrchestratorAgent",
-    model=GEMINI_PRO_MODEL,
+    model=GEMINI_FLASH_MODEL,
     instruction="""
 You are a role-aware AI Answer orchestrator assisting students, parents, and teachers with textbook-based answers with clear separation of concerns. Strictly adhere to the following flow without deviation:
 

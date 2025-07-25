@@ -6,7 +6,7 @@ from google.adk.agents import LlmAgent
 from google.adk.tools import agent_tool
 
 from common_agents.shared_rag_agent import shared_rag_agent
-from models.constants import GEMINI_PRO_MODEL
+from models.constants import GEMINI_FLASH_MODEL, GEMINI_PRO_MODEL
 
 
 class SyllabusPlannerInput(BaseModel):
@@ -29,7 +29,7 @@ class SyllabusPlannerOutput(BaseModel):
 # 1. Scope Clarifier Agent
 scope_clarifier = LlmAgent(
     name="ScopeClarifierAgent",
-    model=GEMINI_PRO_MODEL,
+    model=GEMINI_FLASH_MODEL,
     instruction="""
     Check if the provided scope ('Full Year', 'Exam Window', or 'Custom Range') and dates are valid and sufficient.
 
@@ -47,7 +47,7 @@ scope_clarifier = LlmAgent(
 # 3. Calendar Mapper Agent
 calendar_mapper = LlmAgent(
     name="CalendarMapperAgent",
-    model=GEMINI_PRO_MODEL,
+    model=GEMINI_FLASH_MODEL,
     instruction="""
     Create a structured week-wise or date-wise calendar plan between 'start_date' and 'end_date'.
 
@@ -66,7 +66,7 @@ calendar_mapper = LlmAgent(
 # 4. Planner Refiner Agent
 planner_refiner = LlmAgent(
     name="PlannerRefinerAgent",
-    model=GEMINI_PRO_MODEL,
+    model=GEMINI_FLASH_MODEL,
     instruction="""
     Suggest ONE improvement or personalization follow-up for the syllabus plan.
 

@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 from common_agents import role_formatter_agent
 from diagram_generating_agent.agent import diagram_generating_agent
-from models.constants import GEMINI_PRO_MODEL
+from models.constants import GEMINI_FLASH_MODEL, GEMINI_PRO_MODEL
 
 class ClarifierInput(BaseModel):
     query: str = Field(..., description="User input that may be vague or incomplete.")
@@ -56,7 +56,7 @@ Otherwise, return the most relevant answer from the textbook. Do not invent or g
 
 clarifier_agent = LlmAgent(
     name="ClarifierAgent",
-    model=GEMINI_PRO_MODEL,
+    model=GEMINI_FLASH_MODEL,
     instruction="""
     You are an input clarification assistant.
     
@@ -88,76 +88,46 @@ class FormatterInput(BaseModel):
 
 teacher_formatter_agent = LlmAgent(
     name="TeacherFormatterAgent",
-    model=GEMINI_PRO_MODEL,
+    model=GEMINI_FLASH_MODEL,
     instruction="""
     You are an expert teacher assistant helping a teacher explain a textbook concept to students in class.
     
     Structure:
-    1. Begin with a teacher-friendly opener like: "Here’s how you can teach this:"
-    2. Explain the concept in clear, simple, and structured steps.
-    3. Add a relatable analogy using classroom or real-world objects.
-    4. Suggest at least ONE of the following:
-       - A chalkboard diagram idea
-       - A simple classroom activity
-       - A quick discussion question
-    
-    Constraints:
-    - Keep tone professional but warm (not robotic).
-    - Do not invent information. Stick to textbook facts.
-    
-    Wrap with:
-    - ✅ A 1-line recap
+    - 🏫 "Teacher's Guide: <topic>"
+    - 📚 Clear bullet-point explanation
+    - 💡 Teaching tip or classroom analogy
     - 📍 "Based on Chapter <chapter name>"
-    - 🔍 Then use a tool to search for a relevant video explanation in the user’s preferred language and share the link.
+    - 🔍 Then use a tool to search for a relevant video explanation in the user's preferred language and share the link.
     """
 )
 
 parent_formatter_agent = LlmAgent(
     name="ParentFormatterAgent",
-    model=GEMINI_PRO_MODEL,
+    model=GEMINI_FLASH_MODEL,
     instruction="""
 You are a supportive helper guiding a parent in explaining a textbook concept to their child.
 
-Tone & Style:
-- Use a kind, encouraging, empathetic tone.
-- Assume the parent may not remember school concepts.
-- Never use complex or academic language.
-
 Structure:
-1. Start with reassurance: "No worries! Here’s how you can explain it at home:"
-2. Simplify the concept in everyday words.
-3. Use an example from daily life (cooking, walking, shopping, home chores).
-4. Gently offer to translate: "Would you like this in your local language?"
-
-Wrap with:
-- ✅ “You did a great job explaining this!”
-- Mention TranslatorAgent only if language ≠ English.
-- 🔍 Then use a tool to search for a relevant video explanation in the preferred language and share the link.
+- 🏠 "Family Learning Time: <topic>"
+- 📝 Simple, step-by-step explanation
+- 🎯 Fun analogy or home example
+- 📍 "Based on Chapter <chapter name>"
+- 🔍 Then use a tool to search for a relevant video explanation in the user's preferred language and share the link.
 """
 )
 
 student_formatter_agent = LlmAgent(
     name="StudentFormatterAgent",
-    model=GEMINI_PRO_MODEL,
+    model=GEMINI_FLASH_MODEL,
     instruction="""
 You are a cheerful, encouraging tutor helping a student understand a textbook concept.
 
-Tone:
-- Friendly, fun, clear — like a favorite older sibling or coach.
-- Encourage the student and make them feel confident.
-
 Structure:
-1. Begin with: "Let’s learn this together!"
-2. Explain in 2–3 steps using short, simple sentences.
-3. Add a memory hook using a relatable object: "Think of it like a sponge..."
-4. End with a quick quiz or check-in: 
-   - "Want to try a quick question?"
-   - "What do you think happens next?"
-
-Wrap with:
-- ✨ The memory hook
-- 📘 “Based on Chapter <chapter>”
-- 🔍 Then use a tool to search for a relevant video explanation in the preferred language and share the link.
+- 🎓 "Let's Learn: <topic>"
+- ✨ Encouraging, easy-to-understand explanation
+- 🌟 Relatable analogy or fun example
+- 📍 "Based on Chapter <chapter name>"
+- 🔍 Then use a tool to search for a relevant video explanation in the user's preferred language and share the link.
 """
 )
 
@@ -167,7 +137,7 @@ class TranslatorInput(BaseModel):
 
 translator_agent = LlmAgent(
     name="TranslatorAgent",
-    model=GEMINI_PRO_MODEL,
+    model=GEMINI_FLASH_MODEL,
     instruction="""
     You are a responsible education-grade translator.
     
@@ -243,7 +213,7 @@ processing_agent = SequentialAgent(
 # --- Step 2: Main Q&A Orchestrator (Clarity Check + Processing) ---
 qna_orchestrator_agent = LlmAgent(
     name="QnAOrchestratorAgent",
-    model=GEMINI_PRO_MODEL,
+    model=GEMINI_FLASH_MODEL,
     instruction="""
     You are a Q&A orchestrator with clear separation of concerns:
 
@@ -251,12 +221,13 @@ qna_orchestrator_agent = LlmAgent(
 
     2. **Check the clarifier response**:
        - If it contains "needs_clarification": true → Return the follow_up question directly to user and STOP
-       - If it contains "needs_clarification": false → Continue to step 3
+       - If "needs_clarification": false → Proceed to step 3
 
-    3. **Call ProcessingAgent** to handle RAG retrieval and role-based formatting.
+    3. **Call ProcessingAgent** to retrieve textbook content and format the response.
 
-    IMPORTANT: Never call ProcessingAgent if clarification is needed. Always ask user first.
-    IMPORTANT: Do not call ClarifierAgent once you receive the output from ProcessingAgent
+    4. **Return the final answer** directly without any additional processing.
+
+    CRITICAL: Never call ClarifierAgent twice. Once ProcessingAgent returns, that's the final answer.
     """,
     tools=[
         agent_tool.AgentTool(agent=clarifier_agent),

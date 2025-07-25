@@ -32,7 +32,7 @@ class RagAgentOutput(BaseModel):
 # --- Sub-Agents --- #
 clarifier_agent = LlmAgent(
     name="QuizClarifierAgent",
-    model=GEMINI_PRO_MODEL,
+    model=GEMINI_FLASH_MODEL,
     instruction="""
     You are an input clarification assistant for quiz and exam generation.
 
@@ -167,7 +167,7 @@ processing_agent = SequentialAgent(
         quiz_generator_agent,
         LlmAgent(
             name="RoleFormatterAgent",
-            model=GEMINI_PRO_MODEL,
+            model=GEMINI_FLASH_MODEL,
             instruction="""
             1. Call shared_rag_role_inspector to get the user's role
             2. Call role_formatter_agent with:
