@@ -1,5 +1,5 @@
 import os
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel, Field
 from google.adk.agents import LlmAgent
 from google.adk.tools import agent_tool
@@ -12,9 +12,9 @@ from depricated_quiz_agent.prompts import instructions_for_question_input_valida
 class QuestionGenerationInput(BaseModel):
     standard: str = Field(..., description="e.g., '10' for Class 10")
     subject: str = Field(..., description="e.g., 'Science'")
-    chapters: List[str] = Field(..., description="List of chapter names from NCERT")
-    question_type: str = Field(..., description="'MCQ', 'subjective', or 'mixed'")
-    num_questions: int = Field(..., description="Total number of questions to generate")
+    chapters: Optional[List[str]] = Field(..., description="List of chapter names from NCERT")
+    question_type: Optional[str] = Field(..., description="'MCQ', 'subjective', or 'mixed'")
+    num_questions: Optional[int] = Field(..., description="Total number of questions to generate")
 
 class QuestionGenerationOutput(BaseModel):
     validated: bool = Field(..., description="Whether input was complete and valid")

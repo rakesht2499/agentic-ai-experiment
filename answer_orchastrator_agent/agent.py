@@ -8,7 +8,7 @@ from google.adk.tools import agent_tool, BaseTool, ToolContext
 from pydantic import BaseModel, Field
 
 from common_agents import role_formatter_agent
-from common_agents.shared_rag_agent import shared_rag_agent, shared_rag_role_inspector, vector_rag_agent, clone_agent
+from common_agents.shared_rag_agent import shared_rag_agent, shared_rag_role_inspector, clone_agent, vector_rag_agent
 from models.constants import GEMINI_FLASH_MODEL, GEMINI_PRO_MODEL
 
 class ClarifierInput(BaseModel):
@@ -95,26 +95,33 @@ processing_agent = SequentialAgent(
     name="ProcessingAgent",
     sub_agents=[
         # uses vector based RAG agent
-        clone_agent(shared_rag_agent, "answer"),
+        clone_agent(vector_rag_agent, "answer"),
         LlmAgent(
             name="RoleFormatterAgent",
             model=GEMINI_FLASH_MODEL,
             instruction="""
-            You will receive structured output from the SharedRagAgent_answer in the format:
-            {"subject": "Science", "class_": "Class 10", "content": "NCERT textbook content..."}
+            You will receive output from the SharedRagAgent_answer from the previous step.
             
             Process:
             1. Call SharedRagRoleInspector to get the user's role
-            2. Extract the "content" field from the SharedRagAgent_answer's output from the previous step
+            2. Parse the JSON response from SharedRagAgent_answer to extract the content:
+               - The response should be in format: {"subject": "...", "class_": "...", "content": "..."}
+               - Extract ONLY the "content" field value 
+               - If the response is not valid JSON, use the entire response as content
             3. Call role_formatter_agent with:
                - role: user's role from step 1
-               - content: the extracted content field from SharedRagAgent_answer (NOT the entire JSON structure)
+               - content: the extracted content field from step 2 (NOT the entire JSON structure)
                - formatter_type: "answer"
             4. Handle the JSON response from role_formatter_agent:
                - If error_logs is NOT empty: Return "I apologize, there was an issue formatting your answer. Please try asking your question again."
-               - If error_logs is empty: Return the formatter_content as the final response
+               - If error_logs is empty: Return ONLY the formatter_content as the final response
             
-            IMPORTANT: Only pass the actual textbook content (from the "content" field) to the role_formatter_agent, not the entire structured response.
+            CRITICAL: 
+            - Return ONLY the final formatted content from role_formatter_agent
+            - Do NOT include any intermediate outputs, JSON structures, or raw textbook content
+            - The output should be the engaging, role-specific response (e.g., "Hey there, future scientist!")
+            - Remove any duplicate or unformatted content
+            - If content is "RAG_RETRIEVAL_FAILED", return "I couldn't find relevant information about your query in the textbook. Please try asking a more specific question."
             """,
             tools=[shared_rag_role_inspector, role_formatter_agent]
         )
@@ -137,9 +144,17 @@ You are a role-aware AI Answer orchestrator assisting students, parents, and tea
 
     STEP 3: Call ProcessingAgent for handling RAG retrieval and role-based formatting.
 
-    CRITICAL INSTRUCTION (STRICTLY ENFORCED):
-    - NEVER, under any circumstance, call ClarifierAgent again after you've received output from ProcessingAgent.
-    - Once ProcessingAgent returns a response, consider it FINAL and directly return that response to the user.
+    STEP 4: Extract and return ONLY the final formatted response from ProcessingAgent:
+       - The ProcessingAgent returns output from multiple sub-agents
+       - Return ONLY the final formatted content (the role-specific formatted answer)
+       - DO NOT include any intermediate RAG outputs or JSON structures
+       - The final output should be the engaging, role-appropriate response that starts with greetings like "Hey there, future scientist!"
+
+    CRITICAL INSTRUCTIONS (STRICTLY ENFORCED):
+    - NEVER call ClarifierAgent again after you've received output from ProcessingAgent
+    - Return ONLY the final formatted answer, not intermediate outputs
+    - The response should be clean, engaging, and directly useful to the user
+    - Remove any duplicate or intermediate content
 
     FAILURE TO FOLLOW THIS INSTRUCTION IS UNACCEPTABLE AND WILL BE CONSIDERED A CRITICAL ERROR.
     """,

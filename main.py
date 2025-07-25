@@ -47,7 +47,7 @@ if __name__ == "__main__":
     #         "./diagram_generating_agent",
     #         "./image_generating_agent",
     #         "./lesson_planning_agent",
-    #         "./exam_generating_agent_new",
+    #         "./quiz_generating_agent_new",
     #         "./common_agents",
     #         "./syllabus_planning_agent",
     #         "./models"

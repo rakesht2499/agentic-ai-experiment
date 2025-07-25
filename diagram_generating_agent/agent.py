@@ -60,7 +60,7 @@ def generate_diagram(prompt: str) -> str:
 
     try:
         print("--- TOOL: Detected IMAGE prompt. Using Vertex AI ---")
-        model = ImageGenerationModel.from_pretrained("imagen-4.0-ultra-generate-preview-06-06")
+        model = ImageGenerationModel.from_pretrained("imagen-3.0-generate-002")
         seed = uuid.uuid4().int % (2 ** 32)
         print(f"Using seed: {seed}")
         response = model.generate_images(
