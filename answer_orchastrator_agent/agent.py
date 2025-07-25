@@ -8,7 +8,7 @@ from google.adk.tools import agent_tool, BaseTool, ToolContext
 from pydantic import BaseModel, Field
 
 from common_agents import role_formatter_agent
-from common_agents.shared_rag_agent import shared_rag_agent, shared_rag_role_inspector
+from common_agents.shared_rag_agent import shared_rag_agent, shared_rag_role_inspector, vector_rag_agent
 from models.constants import GEMINI_PRO_MODEL
 
 class ClarifierInput(BaseModel):
@@ -95,6 +95,7 @@ from typing import Optional
 processing_agent = SequentialAgent(
     name="ProcessingAgent",
     sub_agents=[
+        # uses vector based RAG agent
         shared_rag_agent,
         LlmAgent(
             name="RoleFormatterAgent",

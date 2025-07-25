@@ -33,20 +33,20 @@ if __name__ == "__main__":
         raise RuntimeError("❌ Failed to create or find corpus.")
 
     # === CONFIGURE CHUNKING ===
-    print(f"\n⚙️ Configuring chunking parameters...")
-    transformation_config = TransformationConfig(
-        chunking_config=ChunkingConfig(
-            chunk_size=2048,  # Optimal size based on your analysis
-            chunk_overlap=256  # Small overlap to maintain context
-        )
-    )
+    # print(f"\n⚙️ Configuring chunking parameters...")
+    # transformation_config = TransformationConfig(
+    #     chunking_config=ChunkingConfig(
+    #         chunk_size=2048,  # Optimal size based on your analysis
+    #         chunk_overlap=256  # Small overlap to maintain context
+    #     )
+    # )
 
     # === INGEST FILE WITH STRUCTURED CHUNKING ===
     print(f"\n📤 Importing file from GCS with structured chunking...")
     result = import_files(
         corpus_name="projects/rag-engine-vertex-ai-project/locations/us-central1/ragCorpora/5037276183213899776",
         paths=[GCS_JSON_PATH],
-        transformation_config=transformation_config,
+        # transformation_config=transformation_config,
         # max_embedding_requests_per_min=1000,  # Rate limiting
     )
 
