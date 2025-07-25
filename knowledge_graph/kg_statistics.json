@@ -1,0 +1,52 @@
+{
+  "total_concepts": 3280,
+  "total_relationships": 50706,
+  "concept_types": {
+    "term": 3137,
+    "process": 73,
+    "formula": 70
+  },
+  "relationship_types": {
+    "related_to": 48832,
+    "example_of": 1072,
+    "part_of": 206,
+    "used_in": 596
+  },
+  "top_concepts": {
+    "ion": 369,
+    "reprint": 175,
+    "what": 165,
+    "this": 156,
+    "activity": 135,
+    "figure": 97,
+    "these": 86,
+    "acid": 81,
+    "metal": 78,
+    "cell": 78,
+    "solution": 77,
+    "reaction": 71,
+    "science": 69,
+    "compound": 67,
+    "take": 63,
+    "oxygen": 58,
+    "thus": 55,
+    "which": 54,
+    "salt": 49,
+    "base": 45
+  },
+  "concepts_per_chapter": {
+    "Chapter 2": 596,
+    "Chapter 5": 507,
+    "Chapter 9": 442,
+    "Chapter 3": 321,
+    "Chapter 6": 268,
+    "Chapter 8": 128,
+    "Chapter 4": 247,
+    "Chapter 13": 173,
+    "Chapter 11": 357,
+    "Chapter 1": 488,
+    "Chapter 12": 250,
+    "Chapter 7": 315,
+    "Chapter 10": 221
+  }
+}
