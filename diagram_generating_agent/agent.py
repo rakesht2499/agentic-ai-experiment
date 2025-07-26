@@ -50,7 +50,11 @@ Your job is to ensure the response is suitable for generating a diagram using Gr
         print(f"Failed to call Gemini: {e}")
         return "Prompt -> Processing -> Output"
 
-def upload_to_gcs(local_file: str, gcs_uri: str) -> bool:
+class UploadToGcsResponse(BaseModel):
+    gcs_uri: str = Field(description="GCS URI of the file to upload")
+    error: str = Field(description="Error message")
+
+def upload_to_gcs(local_file: str, gcs_uri: str) -> UploadToGcsResponse:
     try:
         bucket_name = gcs_uri.split("/")[2]
         blob_path_jsonl = "/".join(gcs_uri.split("/")[3:])
@@ -61,14 +65,19 @@ def upload_to_gcs(local_file: str, gcs_uri: str) -> bool:
         blob_jsonl = bucket.blob(blob_path_jsonl)
         blob_jsonl.upload_from_filename(local_file)
         print(f"✅ Uploaded {local_file} to {gcs_uri}")
-
-        return True
+        return UploadToGcsResponse(
+            gcs_uri=blob_jsonl.public_url,
+            error=""
+        )
     except Exception as e:
         print(f"❌ Failed to upload to GCS: {e}")
-        return False
+        return UploadToGcsResponse(
+            gcs_uri="",
+            error=f"Failed to upload to GCS: {e}"
+        )
 
 # --- Step 2: Diagram Generation --- #
-def generate_diagram(prompt: str) -> str:
+def generate_diagram(prompt: str) -> UploadToGcsResponse:
     """
     Generates a diagram or image from a prompt. Returns local file path.
     """
@@ -89,11 +98,14 @@ def generate_diagram(prompt: str) -> str:
         response.images[0].save(output_filename)
         print(f"--- TOOL: Generated diagram image {os.path.abspath(output_filename)} ---")
         res = upload_to_gcs(os.path.abspath(output_filename), f"gs://shahayak-agentic-ai-gpl-muskeeters-images/image_generation/{output_filename}")
-        print(f"--- TOOL: Upload to GCS  {res} ---")
+        print(f"--- TOOL: Upload to GCS  {res.gcs_uri} ---")
         print(f"--- TOOL: Image saved to {output_filename} ---")
-        return f"Image successfully generated and saved to: {output_filename}"
+        return res
     except Exception as e:
-        return f"Error during visual generation: {e}"
+        return UploadToGcsResponse(
+            gcs_uri="",
+            error=f"Failed to generate diagram image: {e}"
+        )
 
 
 # --- Output Schemas --- #
