@@ -3,11 +3,12 @@ import os
 from google.adk.agents import LlmAgent, InvocationContext
 from google.adk.tools import agent_tool, BaseTool, ToolContext
 from pydantic import BaseModel, Field
+from google.cloud import storage
 
 from vertexai.generative_models import GenerativeModel
 from vertexai.preview.vision_models import ImageGenerationModel
 
-from diagram_generating_agent.prompts import prompt_for_refiner_agent, prompt_for_validator_agent, prompt_for_flowchart_agent, prompt_for_diagram_generating_agent
+from cursor_diagram_generator.prompts import prompt_for_refiner_agent, prompt_for_validator_agent, prompt_for_flowchart_agent, prompt_for_diagram_generating_agent
 from models.constants import GEMINI_FLASH_MODEL
 
 # For Python 3.11 compatibility
@@ -16,6 +17,30 @@ try:
 except ImportError:
     def override(func):
         return func
+
+# === GCS CONFIGURATION ===
+PROJECT_ID = "rag-engine-vertex-ai-project"
+GCS_BUCKET = "shahayak-agentic-ai-gpl-muskeeters"
+GCS_IMAGE_PREFIX = "image_generation"
+
+def upload_to_gcs(local_path: str, bucket_name: str = GCS_BUCKET, prefix: str = GCS_IMAGE_PREFIX):
+    """Upload a local file to Google Cloud Storage with proper error handling"""
+    import time
+    try:
+        client = storage.Client(project=PROJECT_ID)
+        bucket = client.bucket(bucket_name)
+        fname = os.path.basename(local_path)
+        # Make it unique & nested nicely
+        object_name = f"{prefix}/{int(time.time())}_{uuid.uuid4().hex}_{fname}"
+        blob = bucket.blob(object_name)
+        blob.upload_from_filename(local_path, content_type="image/png")
+
+        gcs_uri = f"gs://{bucket_name}/{object_name}"
+        print(f"✅ Uploaded to GCS: {gcs_uri}")
+        return gcs_uri, blob.public_url if hasattr(blob, 'public_url') else None
+    except Exception as e:
+        print(f"❌ GCS upload failed: {e}")
+        return None, None
 
 
 # --- Step 1: Flow Extraction --- #
@@ -55,114 +80,7 @@ Your job is to ensure the response is suitable for generating a diagram using Gr
         print(f"Failed to call Gemini: {e}")
         return "Prompt -> Processing -> Output"
 
-# --- Step 2: Diagram Generation Tool --- #
-class DiagramGeneratorTool(BaseTool):
-    """Proper ADK tool for generating diagrams"""
-
-    def __init__(self):
-        super().__init__(
-            name="generate_diagram",
-            description="Generates a diagram or image from a prompt and returns the local file path"
-        )
-
-    @override
-    async def run_async(self, context: InvocationContext, tool_context: ToolContext) -> str:
-        """
-        Generates a diagram or image from a prompt. Returns local file path.
-        """
-        # Get the prompt from the context input - handle different input formats
-        prompt = ""
-        if hasattr(context, 'input') and context.input:
-            if isinstance(context.input, dict):
-                prompt = context.input.get('prompt', '') or context.input.get('text', '') or str(context.input)
-            elif hasattr(context.input, 'prompt'):
-                prompt = context.input.prompt
-            elif hasattr(context.input, 'text'):
-                prompt = context.input.text
-            else:
-                prompt = str(context.input)
-
-        # If still no prompt, try to get it from the tool context or use a default
-        if not prompt and hasattr(tool_context, 'input'):
-            prompt = str(tool_context.input)
-
-        if not prompt or prompt.strip() == "":
-            return "Error: No prompt provided for diagram generation. Please provide a description of the diagram you want to create."
-
-        # Create output directory if it doesn't exist
-        output_dir = os.path.join(os.getcwd(), "generated_diagrams")
-        os.makedirs(output_dir, exist_ok=True)
-
-        # Create full file path
-        filename = f"diagram_{uuid.uuid4().hex[:8]}.png"
-        output_filepath = os.path.join(output_dir, filename)
-
-        print(f"--- TOOL: Received prompt: '{prompt}' ---")
-        print(f"--- TOOL: Will save to: {output_filepath} ---")
-
-        try:
-            print("--- TOOL: Using Vertex AI Image Generation ---")
-
-            # Try multiple model versions for better compatibility
-            model_versions = [
-                "imagen-4.0-generate-preview-06-06",
-                "imagegeneration@006",
-                "imagegeneration@005"
-            ]
-
-            model = None
-            for version in model_versions:
-                try:
-                    print(f"Trying model version: {version}")
-                    model = ImageGenerationModel.from_pretrained(version)
-                    break
-                except Exception as version_error:
-                    print(f"Failed to load {version}: {version_error}")
-                    continue
-
-            if not model:
-                return "Error: Unable to load any image generation model. Please check your Vertex AI configuration and permissions."
-
-            seed = uuid.uuid4().int % (2 ** 32)
-            print(f"Using seed: {seed}")
-
-            # Generate the image
-            response = model.generate_images(
-                prompt=prompt,
-                number_of_images=1,
-                aspect_ratio="1:1"
-            )
-
-            # Save image with better error handling
-            if response and response.images and len(response.images) > 0:
-                try:
-                    response.images[0].save(output_filepath)
-
-                    # Verify the file was actually saved
-                    if os.path.exists(output_filepath):
-                        file_size = os.path.getsize(output_filepath)
-                        print(f"--- TOOL: Image saved successfully to {output_filepath} (Size: {file_size} bytes) ---")
-                        return f"Image successfully generated and saved to: {output_filepath}"
-                    else:
-                        return f"Error: Image generation completed but file was not saved to {output_filepath}. Check directory permissions."
-
-                except Exception as save_error:
-                    return f"Error saving image to {output_filepath}: {str(save_error)}"
-            else:
-                return "Error: No image was generated by the model. Please try a different prompt."
-
-        except Exception as e:
-            error_msg = f"Error during image generation: {str(e)}"
-            print(error_msg)
-            # Provide more helpful error message
-            if "403" in str(e) or "permission" in str(e).lower():
-                error_msg += "\nThis might be a permissions issue. Please check your Vertex AI setup and ensure image generation is enabled."
-            elif "quota" in str(e).lower():
-                error_msg += "\nThis might be a quota issue. Please check your Vertex AI quotas."
-            return error_msg
-
-# Create the tool instance
-diagram_generator_tool = DiagramGeneratorTool()
+# --- Old DiagramGeneratorTool removed - using new RealDiagramGeneratorTool below --- #
 
 
 # --- Output Schemas --- #
@@ -210,24 +128,109 @@ prompt_refiner_agent = LlmAgent(
     output_schema=RefinerOutput
 )
 
+# Use a simple tool pattern that definitely works
+class DiagramGeneratorTool(BaseTool):
+    name = "generate_diagram_real"
+    description = "Generates a diagram from a prompt and uploads to GCS. Returns local path and GCS URI."
+
+    @override
+    async def run_async(self, context: InvocationContext, tool_context: ToolContext) -> str:
+        """Generate diagram and upload to GCS"""
+        print("🚀🚀🚀 REAL DIAGRAM TOOL CALLED! 🚀🚀🚀")
+        
+        # Get prompt from context
+        prompt = ""
+        if hasattr(context, 'input') and context.input:
+            if isinstance(context.input, dict):
+                prompt = context.input.get('prompt', '') or str(context.input)
+            elif hasattr(context.input, 'prompt'):
+                prompt = context.input.prompt
+            else:
+                prompt = str(context.input)
+        
+        if not prompt:
+            return "Error: No prompt provided for diagram generation."
+            
+        print(f"🎯 Generating diagram for prompt: '{prompt}'")
+        
+        # Import here to avoid circular imports
+        import time
+        import uuid
+        from google.cloud import storage
+        from vertexai.preview.vision_models import ImageGenerationModel
+        
+        # GCS Configuration
+        PROJECT_ID = "rag-engine-vertex-ai-project"
+        BUCKET = "shahayak-agentic-ai-gpl-muskeeters" 
+        PREFIX = "image_generation"
+        
+        # 1. Generate filename
+        timestamp = int(time.time())
+        uuid_str = uuid.uuid4().hex[:8]
+        filename = f"diagram_{timestamp}_{uuid_str}.png"
+        
+        # Ensure directory exists
+        os.makedirs("./generated_diagrams", exist_ok=True)
+        local_path = f"./generated_diagrams/{filename}"
+        
+        try:
+            # 2. Generate image using Vertex AI
+            print("🎨 Generating image with imagen-3.0-generate-002...")
+            model = ImageGenerationModel.from_pretrained("imagen-3.0-generate-002")
+            response = model.generate_images(
+                prompt=prompt,
+                number_of_images=1,
+                aspect_ratio="1:1"
+            )
+            
+            # Save locally
+            response.images[0].save(local_path)
+            print(f"💾 Image saved locally: {local_path}")
+            
+            # 3. Upload to GCS
+            print("☁️ Uploading to GCS...")
+            client = storage.Client(project=PROJECT_ID)
+            bucket = client.bucket(BUCKET)
+            blob_path = f"{PREFIX}/{filename}"
+            blob = bucket.blob(blob_path)
+            blob.upload_from_filename(local_path, content_type="image/png")
+            
+            gcs_uri = f"gs://{BUCKET}/{blob_path}"
+            public_url = f"https://storage.googleapis.com/{BUCKET}/{blob_path}"
+            
+            print(f"✅ Uploaded to GCS: {gcs_uri}")
+            
+            # Return structured response
+            return f"""Diagram file: {local_path}
+GCS URI: {gcs_uri}
+Public URL: {public_url}
+Caption: Educational diagram generated for: {prompt}"""
+            
+        except Exception as e:
+            error_msg = f"❌ Error generating diagram: {e}"
+            print(error_msg)
+            return error_msg
+
+# Create the tool instance using the working pattern (no constructor parameters needed)
+diagram_generator_tool = DiagramGeneratorTool(name="generate_diagram_real", description="Generates a diagram from a prompt and uploads to GCS")
+print(f"🔧 ✅ DiagramGeneratorTool created: {diagram_generator_tool.name}")
+print(f"🔧 ✅ Tool description: {diagram_generator_tool.description}")
+
 diagram_generation_agent = LlmAgent(
     name="diagram_generation_agent",
     model=GEMINI_FLASH_MODEL,
-    description="Generates a diagram and caption based on the final prompt.",
+    description="Generates a diagram and uploads to GCS using proper ADK tool.",
     instruction="""
-You are a diagram generation agent. Your job is to:
+You have access to a tool called "generate_diagram_real".
 
-1. Receive a refined prompt for diagram generation
-2. Call the generate_diagram tool with the prompt to create the actual diagram
-3. Return both the generated file path and a descriptive caption
+Call this tool with the user's prompt to generate a diagram and upload it to GCS.
 
-When calling generate_diagram, make sure to pass the prompt as a string parameter.
+IMPORTANT: 
+- Actually call the tool, don't make up responses
+- The tool will return the local path and GCS URI
+- Return exactly what the tool provides
 
-If successful, respond with:
-- File path: [the file path returned by the tool]
-- Caption: [a brief description of what the diagram shows]
-
-If there's an error, explain what went wrong and suggest next steps.
+Look for "🚀🚀🚀 REAL DIAGRAM TOOL CALLED!" in the logs to confirm the tool was called.
 """,
     tools=[diagram_generator_tool],
 )
@@ -235,37 +238,23 @@ If there's an error, explain what went wrong and suggest next steps.
 diagram_generating_agent = LlmAgent(
     name="diagram_generating_agent",
     model=GEMINI_FLASH_MODEL,
-    description="Controls the end-to-end diagram generation pipeline.",
+    description="Simple diagram generation without complex orchestration.",
     instruction="""
-You orchestrate a diagram generation flow. Follow these steps exactly:
+Call the diagram_generation_agent tool.
 
-1. **Validation**: Call 'prompt_validator_agent' to evaluate if the user's prompt is clear and complete.
-   - If validation fails, return the feedback message to ask for clarification.
-   - Do NOT proceed if essential information is missing.
+Do NOT simulate or print tool calls. Do NOT output code like "generate_diagram(...)".
 
-2. **Refinement** (if needed): Call 'prompt_refiner_agent' to improve the prompt.
-   - Then call 'reviewer_agent' to approve the refined prompt.
-   - You may repeat refinement up to 2 times if not approved.
+Call the tool and return its output exactly as provided.
 
-3. **Generation**: Once you have a clear, approved prompt, call 'diagram_generation_agent' with the final prompt.
-   - The diagram_generation_agent will handle calling the generate_diagram tool internally.
-   - It will return both the file path and caption.
+Expected output format:
+Diagram file: /path/to/file.png
+GCS URI: gs://bucket/path/file.png
+Public URL: [url or N/A]
+Caption: [description]
 
-4. **Response**: Return the results clearly:
-   - Diagram file: [filename]
-   - Caption: [description]
-
-**CRITICAL ERROR HANDLING**:
-- If any step fails, provide specific error details rather than generic messages.
-- If diagram generation fails, suggest alternative approaches or prompt modifications.
-- Always try to complete the process rather than giving up with vague error messages.
-
-**NEVER** respond with generic error messages like "internal error" without trying the actual tools first.
+If output is missing "GCS URI:" line, the diagram failed to upload to cloud storage.
 """,
     tools=[
-        agent_tool.AgentTool(agent=prompt_validator_agent),
-        agent_tool.AgentTool(agent=prompt_refiner_agent),
-        agent_tool.AgentTool(agent=reviewer_agent),
         agent_tool.AgentTool(agent=diagram_generation_agent)
     ],
 )

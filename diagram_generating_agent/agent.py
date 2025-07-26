@@ -1,6 +1,8 @@
+import os
 import uuid
 from google.adk.agents import LlmAgent
 from google.adk.tools import agent_tool
+from google.cloud import storage
 from pydantic import BaseModel, Field
 
 from vertexai.generative_models import GenerativeModel
@@ -8,9 +10,8 @@ from vertexai.preview.vision_models import ImageGenerationModel
 
 from diagram_generating_agent.prompts import prompt_for_refiner_agent, prompt_for_validator_agent, \
     prompt_for_flowchart_agent, prompt_for_diagram_generating_agent
-from lesson_planning_agent.agent import root_agent
 from models.constants import GEMINI_FLASH_MODEL
-
+# from upload_textbook_to_index.agent_2_convert_res_into_chapter_wise_json import upload_to_gcs
 
 
 # --- Step 1: Flow Extraction --- #
@@ -50,6 +51,23 @@ Your job is to ensure the response is suitable for generating a diagram using Gr
         print(f"Failed to call Gemini: {e}")
         return "Prompt -> Processing -> Output"
 
+def upload_to_gcs(local_file: str, gcs_uri: str) -> bool:
+    try:
+        bucket_name = gcs_uri.split("/")[2]
+        blob_path_jsonl = "/".join(gcs_uri.split("/")[3:])
+
+        storage_client = storage.Client(project=os.getenv("GOOGLE_CLOUD_PROJECT"))
+        bucket = storage_client.bucket(bucket_name)
+
+        blob_jsonl = bucket.blob(blob_path_jsonl)
+        blob_jsonl.upload_from_filename(local_file)
+        print(f"✅ Uploaded {local_file} to {gcs_uri}")
+
+        return True
+    except Exception as e:
+        print(f"❌ Failed to upload to GCS: {e}")
+        return False
+
 # --- Step 2: Diagram Generation --- #
 def generate_diagram(prompt: str) -> str:
     """
@@ -60,7 +78,7 @@ def generate_diagram(prompt: str) -> str:
 
     try:
         print("--- TOOL: Detected IMAGE prompt. Using Vertex AI ---")
-        model = ImageGenerationModel.from_pretrained("imagen-3.0-generate-002")
+        model = ImageGenerationModel.from_pretrained("imagen-4.0-generate-preview-06-06")
         seed = uuid.uuid4().int % (2 ** 32)
         print(f"Using seed: {seed}")
         response = model.generate_images(
@@ -70,11 +88,13 @@ def generate_diagram(prompt: str) -> str:
         )
         # Save image
         response.images[0].save(output_filename)
+        print(f"--- TOOL: Generated diagram image {os.path.abspath(output_filename)} ---")
+        res = upload_to_gcs(os.path.abspath(output_filename), f"gs://shahayak-agentic-ai-gpl-muskeeters/image_generation/{output_filename}")
+        print(f"--- TOOL: Upload to GCS  {res} ---")
         print(f"--- TOOL: Image saved to {output_filename} ---")
         return f"Image successfully generated and saved to: {output_filename}"
     except Exception as e:
         return f"Error during visual generation: {e}"
-
 
 
 # --- Output Schemas --- #

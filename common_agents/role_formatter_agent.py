@@ -1,5 +1,12 @@
 from abc import ABC, abstractmethod
-from typing import Literal, override, List
+from typing import Literal, List
+
+# For Python 3.11 compatibility
+try:
+    from typing import override
+except ImportError:
+    def override(func):
+        return func
 
 from google.adk.agents import InvocationContext, LlmAgent
 from google.adk.tools import BaseTool, ToolContext

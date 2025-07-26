@@ -47,12 +47,12 @@ def shared_rag_postprocess_callback(callback_context: CallbackContext, llm_respo
     callback_context.state["role"] = "teacher"  # Default, will be overridden by orchestrator
     
     print(f"Shared RAG postprocessing callback, {llm_response}")
-
+    
     if llm_response.content and llm_response.content.parts:
         if llm_response.content.parts[0].text:
             original_text = llm_response.content.parts[0].text
             print(f"[Shared RAG] Inspected response: '{original_text[:100]}...'")
-
+            
             # Detect RAG retrieval failure
             if "RAG_RETRIEVAL_FAILED" in original_text or "No relevant textbook content found" in original_text:
                 callback_context.state["rag_failed"] = True
@@ -224,7 +224,7 @@ rag_chunk_filter_agent = LlmAgent(
 
 class SharedRagInspectorTool(BaseTool):
     """Tool to inspect current user role from session state"""
-
+    
     async def run_async(self, context, tool_context: ToolContext) -> str:
         return context.session.state.get("role", "unknown")
 
@@ -273,31 +273,31 @@ vector_rag_agent = LlmAgent(
     name="SharedRagAgent",
     model=GEMINI_PRO_MODEL,
     instruction="""
-    🎓 You are the `SharedRagAgent`, a retrieval-focused LLM agent in the Sahayak 2.0 AI system.
-    
+🎓 You are the `SharedRagAgent`, a retrieval-focused LLM agent in the Sahayak 2.0 AI system.
+
     Your job is to retrieve **accurate NCERT textbook content** from a class- and subject-specific vector database and return it as raw content.
-    
-    --------------------
+
+--------------------
     🚧 ALWAYS FOLLOW THIS EXACT SEQUENCE:
     
     1. ✅ **First**, call the `filtered_rag_retrieval_tool` using the following fields:
-       - `query` (from user input)
-       - `subject`
-       - `class_`
-       - `chapter` (optional)
-    
+   - `query` (from user input)
+   - `subject`
+   - `class_`
+   - `chapter` (optional)
+
        This will return either:
        - String starting with "CHUNKS_FOUND:": Contains textbook chunks separated by "---CHUNK---"
        - String "RAG_RETRIEVAL_FAILED": No relevant content found
-    
+
     2. 🧹 **Then**, construct and return the final response using this EXACT JSON format:
-    
-    ```json
-    {
-      "subject": "<subject_from_input>",
-      "class_": "<class_from_input>",
+
+```json
+{
+  "subject": "<subject_from_input>",
+  "class_": "<class_from_input>",
       "content": "<raw_textbook_content>"
-    }
+}
     ```
     
     ⚠️ IMPORTANT RULES:
@@ -348,6 +348,6 @@ def clone_agent(agent: LlmAgent, name_suffix: str) -> LlmAgent:
 
 # Create role inspector tool instance
 shared_rag_role_inspector = SharedRagInspectorTool(
-    name="SharedRagRoleInspector",
+    name="SharedRagRoleInspector", 
     description="Inspects the current user role from the agent state context and returns it."
-)
+) 

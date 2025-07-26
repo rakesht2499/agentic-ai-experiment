@@ -1,5 +1,12 @@
 from typing import Literal
-from typing import Optional, override
+from typing import Optional
+
+# For Python 3.11 compatibility
+try:
+    from typing import override
+except ImportError:
+    def override(func):
+        return func
 
 from google.adk.agents import LlmAgent, SequentialAgent
 from google.adk.agents.callback_context import CallbackContext
@@ -65,7 +72,7 @@ translator_agent = LlmAgent(
     
     Respond with the translated content directly.
     """
-)
+    )
 
 from pydantic import BaseModel
 
