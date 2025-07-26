@@ -89,7 +89,7 @@ def generate_diagram(prompt: str) -> str:
         # Save image
         response.images[0].save(output_filename)
         print(f"--- TOOL: Generated diagram image {os.path.abspath(output_filename)} ---")
-        res = upload_to_gcs(os.path.abspath(output_filename), f"gs://shahayak-agentic-ai-gpl-muskeeters/image_generation/{output_filename}")
+        res = upload_to_gcs(os.path.abspath(output_filename), f"gs://shahayak-agentic-ai-gpl-muskeeters-images/image_generation/{output_filename}")
         print(f"--- TOOL: Upload to GCS  {res} ---")
         print(f"--- TOOL: Image saved to {output_filename} ---")
         return f"Image successfully generated and saved to: {output_filename}"
