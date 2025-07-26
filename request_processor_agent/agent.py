@@ -93,7 +93,6 @@ If no match → ask user for clarification.
 
 ✅ Regardless of input format (text, image, or JSON), your output must be:
 
-```json
 {
   "type": "text" | "image",
   "data": "<final content>"
