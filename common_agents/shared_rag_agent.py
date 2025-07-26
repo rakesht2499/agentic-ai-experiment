@@ -149,7 +149,7 @@ def filtered_rag_retrieval_tool(input_data: SharedRagInput) -> str:
     # Direct retrieval
     try:
         rag_resource = RagResource(
-            rag_corpus=f'projects/{os.getenv("GOOGLE_CLOUD_PROJECT")}/locations/us-central1/ragCorpora/{os.getenv("RAG_CORPORA_ID")}'
+            rag_corpus=f'projects/rag-engine-vertex-ai-project/locations/us-central1/ragCorpora/5037276183213899776'
         )
 
         # Build metadata filter with proper escaping
@@ -164,6 +164,7 @@ def filtered_rag_retrieval_tool(input_data: SharedRagInput) -> str:
             vector_distance_threshold=0.5,
         )
 
+        print(f'RESOURCE_RAG_CORPUS : projects/{os.getenv("GOOGLE_CLOUD_PROJECT")}/locations/us-central1/ragCorpora/{os.getenv("RAG_CORPORA_ID")}')
         print(f"[DIRECT] RAG Retrieval Tool Result: {type(result)}")
         print(f"RAG Retrieval Tool Result Contexts: {result.contexts}")
 
