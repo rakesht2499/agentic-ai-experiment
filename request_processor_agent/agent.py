@@ -2,7 +2,7 @@ from google.adk.agents import LlmAgent
 from google.adk.tools import agent_tool
 
 from quiz_generating_agent_new.agent import root_agent as exam_generating_agent
-from cursor_diagram_generator.agent import diagram_generating_agent
+from diagram_generating_agent.agent import diagram_generating_agent
 from image_generating_agent.agent import image_generating_agent
 from lesson_planning_agent.agent import root_agent as lesson_planning_agent
 from answer_orchastrator_agent.agent import answer_orchestrator_agent
