@@ -128,7 +128,7 @@ class SequentialAgentRunner:
         except Exception as e:
             logger.error(f"💥 {agent_info['name']} failed with exception: {e}")
             return False
-    
+
     def run_all_agents(self):
         """Run all agents in sequence"""
         logger.info("🎬 Starting Sequential Agent Execution")

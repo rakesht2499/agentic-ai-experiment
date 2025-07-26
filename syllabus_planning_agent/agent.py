@@ -2,7 +2,7 @@ import os
 from typing import Literal, Optional
 from pydantic import BaseModel, Field
 
-from google.adk.agents import LlmAgent
+from google.adk.agents import LlmAgent, SequentialAgent
 from google.adk.tools import agent_tool
 
 from common_agents.shared_rag_agent import shared_rag_agent
@@ -81,6 +81,15 @@ planner_refiner = LlmAgent(
     output_schema=SyllabusPlannerOutput
 )
 
+processing_agent = SequentialAgent(
+    name="processing_agent",
+    sub_agents=[
+        shared_rag_agent,
+        calendar_mapper,
+        planner_refiner
+    ]
+)
+
 # --- Root Orchestrator Agent --- #
 root_agent = LlmAgent(
     name="syllabus_planner_agent",
@@ -111,8 +120,6 @@ root_agent = LlmAgent(
     """,
     tools=[
         agent_tool.AgentTool(agent=scope_clarifier),
-        agent_tool.AgentTool(agent=shared_rag_agent),
-        agent_tool.AgentTool(agent=calendar_mapper),
-        agent_tool.AgentTool(agent=planner_refiner)
+        agent_tool.AgentTool(agent=processing_agent)
     ]
 )

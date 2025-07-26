@@ -1,6 +1,6 @@
 import os
 import uuid
-from google.adk.agents import LlmAgent
+from google.adk.agents import LlmAgent, SequentialAgent
 from google.adk.tools import agent_tool
 from google.cloud import storage
 from pydantic import BaseModel, Field
@@ -11,7 +11,6 @@ from vertexai.preview.vision_models import ImageGenerationModel
 from diagram_generating_agent.prompts import prompt_for_refiner_agent, prompt_for_validator_agent, \
     prompt_for_flowchart_agent, prompt_for_diagram_generating_agent
 from models.constants import GEMINI_FLASH_MODEL
-# from upload_textbook_to_index.agent_2_convert_res_into_chapter_wise_json import upload_to_gcs
 
 
 # --- Step 1: Flow Extraction --- #
@@ -150,6 +149,15 @@ diagram_generation_agent = LlmAgent(
     tools=[generate_diagram],
 )
 
+processing_agent = SequentialAgent(
+    name="processing_agent",
+    sub_agents=[
+        prompt_refiner_agent,
+        reviewer_agent,
+        diagram_generation_agent
+    ]
+)
+
 diagram_generating_agent = LlmAgent(
     name="diagram_generating_agent",
     model=GEMINI_FLASH_MODEL,
@@ -157,9 +165,7 @@ diagram_generating_agent = LlmAgent(
     instruction=prompt_for_diagram_generating_agent,
     tools=[
         agent_tool.AgentTool(agent=prompt_validator_agent),
-        agent_tool.AgentTool(agent=prompt_refiner_agent),
-        agent_tool.AgentTool(agent=reviewer_agent),
-        agent_tool.AgentTool(agent=diagram_generation_agent)
+        agent_tool.AgentTool(agent=processing_agent),
     ],
 )
 
