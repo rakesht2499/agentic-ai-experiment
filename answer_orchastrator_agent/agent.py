@@ -88,7 +88,7 @@ from google.adk.agents import InvocationContext
 class AnswerOrchestratorInput(BaseModel):
     query: str = Field(..., description="User's question or voice-transcribed input.")
     role: Literal["teacher", "parent", "student"] = Field(..., description="Role of the user.")
-    board: str
+    board: Optional[str] = Field("CBSE", description="The board that this question belongs to.")
     subject: str
     class_: str
     chapter: Optional[str] = None
