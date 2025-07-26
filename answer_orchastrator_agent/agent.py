@@ -11,7 +11,7 @@ except ImportError:
 from google.adk.agents import LlmAgent, SequentialAgent
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.models import LlmResponse
-from google.adk.tools import agent_tool, BaseTool, ToolContext
+from google.adk.tools import agent_tool, BaseTool, ToolContext, google_search
 from pydantic import BaseModel, Field
 
 from common_agents import role_formatter_agent
@@ -122,6 +122,13 @@ processing_agent = SequentialAgent(
             4. Handle the JSON response from role_formatter_agent:
                - If error_logs is NOT empty: Return "I apologize, there was an issue formatting your answer. Please try asking your question again."
                - If error_logs is empty: Return ONLY the formatter_content as the final response
+                - 🔍 Then use GoogleSearchTool to search for a relevant video explanation of the query in the user's preferred language. Append the search result & mention it was fetched from google search.
+               - if no class is mentioned then find out from NCERT books where this concept is mentioned and for that respective class search for the link to get better results.
+               - Display the query which you are using to search in youtube.
+               - Don't give more than 2 videos.
+               - Only add those links which are available on youtube and does not show "This video isn't available any more"
+               - Return the YouTube video link with a short message like:
+                    `🎥 Here's a video explanation I found for you: [video_title] — [video_url] (via Google Search)`
             
             CRITICAL: 
             - Return ONLY the final formatted content from role_formatter_agent
@@ -130,7 +137,7 @@ processing_agent = SequentialAgent(
             - Remove any duplicate or unformatted content
             - If content is "RAG_RETRIEVAL_FAILED", return "I couldn't find relevant information about your query in the textbook. Please try asking a more specific question."
             """,
-            tools=[shared_rag_role_inspector, role_formatter_agent]
+            tools=[shared_rag_role_inspector, role_formatter_agent, google_search]
         )
     ],
     description="Handles RAG retrieval and role-based formatting sequentially"
