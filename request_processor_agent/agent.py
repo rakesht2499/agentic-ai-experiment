@@ -145,7 +145,7 @@ Use for:
 🛑 Fallback & Clarity Rules:
 
 - If input is vague ("help me", "do it", "next step"), or content unclear → Respond:  
-  🔁 Ask: `"I'm not sure what you need. Can you clarify your request so I can route it to the right tool?"`
+  🔁 Ask: `"I can definitely help you with that. Can you pls provide more details? Like are you a teacher, student or parent"`
 
 - If media is blank or corrupted →  
   🔁 Ask user to re-upload or clarify
