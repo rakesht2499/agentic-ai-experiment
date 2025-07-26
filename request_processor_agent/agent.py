@@ -48,7 +48,7 @@ Your task is to analyze **all inputs** + **context** and make a **single, correc
 🧠 Tool: `answer_orchestrator_agent`  
 Use for:
 - Academic or textbook-style questions  
-  E.g., "What is evaporation?", "Explain force"
+  E.g., "What is evaporation?", "Explain force", "Explain photosynthesis"
 - Textbook image + follow-up query  
 - Audio or video of a conceptual doubt
 - Input sounds like a doubt, definition, explanation request
@@ -81,7 +81,7 @@ Use for:
 
 📄 Tool: `exam_generator_agent`  
 Use for:
-- “Make 5 questions”, “Create an MCQ test”, “Generate quiz”
+- “Make 5 questions”, “Create an MCQ test”, “Generate quiz”, "Generate a test"
 - Any request that mentions questions, exam, quiz, test
 - Role-aware quiz or exam needs (students/parents/teachers)
 
