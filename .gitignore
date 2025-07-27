@@ -5,3 +5,4 @@
 **/output
 *.jsonl
 test_*.py
+.DS_Store
