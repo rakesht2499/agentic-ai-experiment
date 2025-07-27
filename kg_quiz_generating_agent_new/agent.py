@@ -14,7 +14,7 @@ except ImportError:
         return func
 
 from common_agents import role_formatter_agent
-from common_agents.shared_rag_agent import shared_rag_role_inspector, clone_agent, shared_rag_agent
+from common_agents.shared_rag_agent import shared_rag_role_inspector, clone_agent, shared_rag_agent, vector_rag_agent
 from models.constants import GEMINI_FLASH_MODEL, GEMINI_PRO_MODEL
 from kg_quiz_generating_agent_new.educational_difficulty_classifier import EducationalDifficultyClassifier
 
@@ -638,7 +638,7 @@ OR
 kg_processing_agent = SequentialAgent(
     name="KGProcessingAgent",
     sub_agents=[
-        clone_agent(shared_rag_agent, "quiz"),  # Get RAG content
+        clone_agent(vector_rag_agent, "quiz"),  # Get RAG content
         kg_quiz_generator_agent,  # Generate questions using KG + RAG
         LlmAgent(
             name="KGRoleFormatterAgent",

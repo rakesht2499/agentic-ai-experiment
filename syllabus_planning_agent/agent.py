@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 from google.adk.agents import LlmAgent, SequentialAgent
 from google.adk.tools import agent_tool
 
-from common_agents.shared_rag_agent import shared_rag_agent
+from common_agents.shared_rag_agent import shared_rag_agent, vector_rag_agent
 from models.constants import GEMINI_FLASH_MODEL, GEMINI_PRO_MODEL
 
 
@@ -84,7 +84,7 @@ planner_refiner = LlmAgent(
 processing_agent = SequentialAgent(
     name="processing_agent",
     sub_agents=[
-        shared_rag_agent,
+        vector_rag_agent,
         calendar_mapper,
         planner_refiner
     ]
