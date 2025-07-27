@@ -19,7 +19,7 @@ def main():
     kg_builder = EducationalKnowledgeGraph()
     
     # Path to your JSONL file
-    jsonl_file = "upload_textbook_to_index/class10_science.jsonl"
+    jsonl_file = "../upload_textbook_to_index/class10_science.jsonl"
     
     if not os.path.exists(jsonl_file):
         print(f"❌ JSONL file not found: {jsonl_file}")
