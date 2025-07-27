@@ -15,7 +15,7 @@ from google.adk.tools import agent_tool, BaseTool, ToolContext, google_search
 from pydantic import BaseModel, Field
 
 from common_agents import role_formatter_agent
-from common_agents.shared_rag_agent import shared_rag_agent, shared_rag_role_inspector, clone_agent, vector_rag_agent
+from common_agents.shared_rag_agent import shared_rag_agent, shared_rag_role_inspector, clone_agent
 from models.constants import GEMINI_FLASH_MODEL, GEMINI_PRO_MODEL
 
 class ClarifierInput(BaseModel):
@@ -102,7 +102,7 @@ processing_agent = SequentialAgent(
     name="ProcessingAgent",
     sub_agents=[
         # uses vector based RAG agent
-        clone_agent(vector_rag_agent, "answer"),
+        clone_agent(shared_rag_agent, "answer"),
         LlmAgent(
             name="RoleFormatterAgent",
             model=GEMINI_FLASH_MODEL,

@@ -10,9 +10,8 @@ except ImportError:
     def override(func):
         return func
 
-from common_agents import role_formatter_agent
-from common_agents.shared_rag_agent import vector_rag_agent, shared_rag_role_inspector, clone_agent
-from quiz_generating_agent_new.prompts import QUIZ_PREP_ORCHESTRATOR_PROMPT
+from common_agents import role_formatter_agent, shared_rag_agent
+from common_agents.shared_rag_agent import shared_rag_role_inspector, clone_agent
 from models.constants import GEMINI_FLASH_MODEL, GEMINI_PRO_MODEL
 
 from quiz_generating_agent_new.prompts import instructions_for_question_input_validator
@@ -170,7 +169,7 @@ Always use the QuizPrepTool to fetch:
 processing_agent = SequentialAgent(
     name="ProcessingAgent",
     sub_agents=[
-        clone_agent(vector_rag_agent, "quiz"),
+        clone_agent(shared_rag_agent, "quiz"),
         quiz_generator_agent,
         LlmAgent(
             name="RoleFormatterAgent",
