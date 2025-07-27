@@ -2,7 +2,10 @@ python-dotenv==1.1.0
 requests>=2.32.4
 google-adk==1.7.0
 google-cloud-aiplatform[adk,agent_engines]==1.104.0
+google-cloud-storage>=2.10.0
 pydantic==2.11.3
 absl-py==2.1.0
 cloudpickle==3.0.0
 deprecated>=1.2.14
+networkx>=3.0
+Pillow>=10.0.0

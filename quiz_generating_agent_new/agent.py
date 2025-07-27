@@ -1,17 +1,23 @@
-from typing import List, Literal, Optional, override
+from typing import List, Literal, Optional
 from pydantic import BaseModel, Field
 from google.adk.agents import LlmAgent, SequentialAgent, InvocationContext
 from google.adk.tools import agent_tool, BaseTool, ToolContext
 
-from common_agents import role_formatter_agent
-from common_agents.shared_rag_agent import shared_rag_agent, shared_rag_role_inspector
-from exam_generating_agent_new.prompts import QUIZ_PREP_ORCHESTRATOR_PROMPT
+# For Python 3.11 compatibility
+try:
+    from typing import override
+except ImportError:
+    def override(func):
+        return func
+
+from common_agents import role_formatter_agent, shared_rag_agent
+from common_agents.shared_rag_agent import shared_rag_role_inspector, clone_agent
 from models.constants import GEMINI_FLASH_MODEL, GEMINI_PRO_MODEL
 
-from exam_generating_agent_new.prompts import instructions_for_question_input_validator
+from quiz_generating_agent_new.prompts import instructions_for_question_input_validator
 
 
-class QuestionGenerationInput(BaseModel):
+class QuizGenerationInput(BaseModel):
     mode: Literal["quiz", "exam"] = Field(..., description="Whether to generate a short quiz or a full exam paper.")
     role: Literal["teacher", "parent", "student"] = Field(..., description="Role of the user requesting the quiz/exam.")
     subject: str = Field(..., description="The subject to generate the quiz/exam for, e.g., 'Science'.")
@@ -32,7 +38,7 @@ class RagAgentOutput(BaseModel):
 # --- Sub-Agents --- #
 clarifier_agent = LlmAgent(
     name="QuizClarifierAgent",
-    model=GEMINI_PRO_MODEL,
+    model=GEMINI_FLASH_MODEL,
     instruction="""
     You are an input clarification assistant for quiz and exam generation.
 
@@ -83,7 +89,7 @@ clarifier_agent = LlmAgent(
     - If it's missing and you don't clarify it → formatter routing fails or becomes ambiguous.
     - This updated instruction also encourages **natural language clarifying questions**.
     """,
-    input_schema=QuestionGenerationInput
+    input_schema=QuizGenerationInput
 )
 
 
@@ -100,7 +106,7 @@ class QuizPrepTool(BaseTool):
 
     @override
     async def run_async(self, context: InvocationContext, tool_context: ToolContext) -> str:
-        input_data = QuestionGenerationInput(**context.input.dict())
+        input_data = QuizGenerationInput(**context.input.dict())
 
         # Compose the task instruction
         prompt = f"""
@@ -133,7 +139,7 @@ quiz_generator_agent = LlmAgent(
     instruction="""
 You are an AI educator tasked with generating highly engaging and non-repetitive quiz or exam questions.
 
-You will receive input from the previous step (SharedRagAgent) in the format:
+You will receive input from the previous step (SharedRagAgent_quiz) in the format:
 {"subject": "Science", "class_": "Class 10", "content": "NCERT textbook content..."}
 
 Process:
@@ -142,19 +148,19 @@ Process:
 3. Generate questions based on the textbook content and quiz parameters
 
 Always use the QuizPrepTool to fetch:
-- Class (verify against SharedRagAgent output)
-- Subject (verify against SharedRagAgent output)  
+- Class (verify against SharedRagAgent_quiz output)
+- Subject (verify against SharedRagAgent_quiz output)  
 - Mode (quiz or exam)
 - Chapters (if specified)
 - Role-specific tone
 - Language preference
 - Question count
 
-✅ Your job is to generate only the questions based on the NCERT content from SharedRagAgent — do NOT explain answers.
+✅ Your job is to generate only the questions based on the NCERT content from SharedRagAgent_quiz — do NOT explain answers.
 ✅ If the content field contains "RAG_RETRIEVAL_FAILED", create general questions for the subject/class and mention the limitation.
 ✅ Avoid repetition in wording or structure even across multiple calls.
 ✅ Always follow the tone appropriate to the role (teacher, parent, or student).
-✅ Align questions with the specific NCERT content provided by SharedRagAgent.
+✅ Align questions with the specific NCERT content provided by SharedRagAgent_quiz.
 """,
     tools=[quiz_prep_tool],
 )
@@ -163,11 +169,11 @@ Always use the QuizPrepTool to fetch:
 processing_agent = SequentialAgent(
     name="ProcessingAgent",
     sub_agents=[
-        shared_rag_agent,
+        clone_agent(shared_rag_agent, "quiz"),
         quiz_generator_agent,
         LlmAgent(
             name="RoleFormatterAgent",
-            model=GEMINI_PRO_MODEL,
+            model=GEMINI_FLASH_MODEL,
             instruction="""
             1. Call shared_rag_role_inspector to get the user's role
             2. Call role_formatter_agent with:
@@ -190,23 +196,35 @@ quiz_prep_orchestrator_agent = LlmAgent(
     instruction="""
     You are a strict quiz/exam generation orchestrator. Follow these rules exactly:
 
-    1. **First**, call QuizClarifierAgent to validate the completeness of the user's input.
+    STEP 1: Clarification
+    - Call QuizClarifierAgent to check if the user input is complete.
 
-    2. If `needs_clarification` is true in the clarifier response:
-       - Immediately return the follow-up clarification question and STOP processing.
+    - If the response contains `"needs_clarification": true`:
+        → Immediately return a JSON response:
+        {
+          "type": "text",
+          "data": "<follow_up question>"
+        }
+        → Do NOT continue to ProcessingAgent.
 
-    3. If `needs_clarification` is false:
-       - Proceed by calling ProcessingAgent.
+    STEP 2: Generation
+    - If the response is `"needs_clarification": false`:
+        → Call ProcessingAgent with clarified_input
+        → Wait for its output
 
-    ⚠️ CRITICAL INSTRUCTIONS:
-    - NEVER re-call QuizClarifierAgent after the ProcessingAgent finishes.
-    - NEVER return quiz questions to a teacher WITHOUT answers if they exist.
-    - Always clearly label the answer section (e.g., "Answer Key").
-    - Do Not modify anything from what processing_agent is returnung
+    FINAL OUTPUT (MANDATORY):
+    - Wrap the final output in this format:
+      {
+        "type": "text",
+        "data": "<formatted quiz content>"
+      }
 
-    Any deviation from these instructions will be considered a critical failure.
+    DO NOT:
+    - Wrap anything inside QuizPrepOrchestratorAgent_response
+    - Return any JSON blob inside a string
+    - Include logs, intermediate JSON, or raw responses
     """,
-    input_schema=QuestionGenerationInput,
+    input_schema=QuizGenerationInput,
     tools=[
         agent_tool.AgentTool(agent=clarifier_agent),
         agent_tool.AgentTool(agent=processing_agent)

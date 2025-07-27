@@ -1,11 +1,18 @@
 from abc import ABC, abstractmethod
-from typing import Literal, override, List
+from typing import Literal, List
+
+# For Python 3.11 compatibility
+try:
+    from typing import override
+except ImportError:
+    def override(func):
+        return func
 
 from google.adk.agents import InvocationContext, LlmAgent
 from google.adk.tools import BaseTool, ToolContext
 from pydantic import BaseModel, Field
 
-from models.constants import GEMINI_PRO_MODEL
+from models.constants import GEMINI_FLASH_MODEL
 
 class RoleFormatterInput(BaseModel):
     role: Literal["teacher", "student", "parent"] = Field(description="The role of the user")
@@ -40,7 +47,7 @@ class AnswerFormatter(BaseContentFormatter):
         # Create LLM agents for each role with exact prompts from reference
         self.teacher_agent = LlmAgent(
             name="AnswerTeacherFormatter",
-            model=GEMINI_PRO_MODEL,
+            model=GEMINI_FLASH_MODEL,
             instruction="""
     You are an expert teacher assistant helping a teacher explain a textbook concept to students in class.
     
@@ -65,7 +72,7 @@ class AnswerFormatter(BaseContentFormatter):
         
         self.parent_agent = LlmAgent(
             name="AnswerParentFormatter",
-            model=GEMINI_PRO_MODEL,
+            model=GEMINI_FLASH_MODEL,
             instruction="""
 You are a supportive helper guiding a parent in explaining a textbook concept to their child.
 
@@ -88,7 +95,7 @@ Wrap with:
         
         self.student_agent = LlmAgent(
             name="AnswerStudentFormatter",
-            model=GEMINI_PRO_MODEL,
+            model=GEMINI_FLASH_MODEL,
             instruction="""
 You are a cheerful, encouraging tutor helping a student understand a textbook concept.
 
@@ -130,7 +137,7 @@ class QuizFormatter(BaseContentFormatter):
         # Create LLM agents for each role with exact prompts from reference
         self.teacher_agent = LlmAgent(
             name="QuizTeacherFormatter",
-            model=GEMINI_PRO_MODEL,
+            model=GEMINI_FLASH_MODEL,
             instruction="""
 You are formatting a quiz or exam for a teacher to print or assign in class.
 
@@ -149,7 +156,7 @@ At the end, add:
         
         self.parent_agent = LlmAgent(
             name="QuizParentFormatter",
-            model=GEMINI_PRO_MODEL,
+            model=GEMINI_FLASH_MODEL,
             instruction="""
 You are helping a parent revise a quiz or exam with their child at home.
 
@@ -168,7 +175,7 @@ At the end:
         
         self.student_agent = LlmAgent(
             name="QuizStudentFormatter",
-            model=GEMINI_PRO_MODEL,
+            model=GEMINI_FLASH_MODEL,
             instruction="""
     You are a quiz master giving an interactive quiz directly to a student.
     

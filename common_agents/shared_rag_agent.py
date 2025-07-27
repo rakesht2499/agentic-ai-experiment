@@ -6,22 +6,19 @@ This module provides a centralized RAG agent that can be reused across all orche
 """
 
 import os
-from typing import Optional, Literal, List, Any
-
-from google.cloud.aiplatform_v1 import RetrieveContextsResponse
-from pydantic import BaseModel, Field
+from typing import Optional, List
 
 from dotenv import load_dotenv
 from google.adk.agents import LlmAgent
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.models import LlmResponse
-from google.adk.tools import BaseTool, ToolContext, agent_tool
-
-from vertexai.rag.utils.resources import RagRetrievalConfig
-from vertexai.preview.rag import RagResource, Filter
+from google.adk.tools import BaseTool, ToolContext
+from google.cloud.aiplatform_v1 import RetrieveContextsResponse
+from pydantic import BaseModel, Field
+from vertexai.preview.rag import RagResource
 from vertexai.preview.rag.rag_retrieval import retrieval_query
 
-from models.constants import GEMINI_PRO_MODEL
+from models.constants import GEMINI_FLASH_MODEL, GEMINI_PRO_MODEL
 
 load_dotenv()
 
@@ -48,14 +45,14 @@ def shared_rag_postprocess_callback(callback_context: CallbackContext, llm_respo
     Sets role to 'student' by default - this will be overridden by orchestrator input.
     """
     callback_context.state["role"] = "teacher"  # Default, will be overridden by orchestrator
-
+    
     print(f"Shared RAG postprocessing callback, {llm_response}")
-
+    
     if llm_response.content and llm_response.content.parts:
         if llm_response.content.parts[0].text:
             original_text = llm_response.content.parts[0].text
             print(f"[Shared RAG] Inspected response: '{original_text[:100]}...'")
-
+            
             # Detect RAG retrieval failure
             if "RAG_RETRIEVAL_FAILED" in original_text or "No relevant textbook content found" in original_text:
                 callback_context.state["rag_failed"] = True
@@ -130,27 +127,29 @@ def filtered_rag_retrieval_tool(input_data: SharedRagInput) -> str:
     Returns either joined chunks or "RAG_RETRIEVAL_FAILED"
     """
     print(f"RAG Input Data: {input_data}")
+    
+    # Handle both dict and SharedRagInput object formats
+    if isinstance(input_data, dict):
+        # Convert dict to SharedRagInput object with defaults
+        query = input_data.get('query', '')
+        subject = input_data.get('subject', '')
+        class_ = input_data.get('class_', '')
+        chapter = input_data.get('chapter', None)
+        board = input_data.get('board', 'CBSE')  # Default to CBSE if not provided
+    else:
+        # Already a SharedRagInput object
+        query = input_data.query
+        subject = input_data.subject
+        class_ = input_data.class_
+        chapter = input_data.chapter
+        board = input_data.board or 'CBSE'  # Default to CBSE if None
+
+    print(f"RAG Retrieval Tool Input: {query}, {subject}, {class_}, {chapter}, {board}")
+    
+    # Direct retrieval
     try:
-        # Handle both dict and SharedRagInput object formats
-        if isinstance(input_data, dict):
-            # Convert dict to SharedRagInput object with defaults
-            query = input_data.get('query', '')
-            subject = input_data.get('subject', '')
-            class_ = input_data.get('class_', '')
-            chapter = input_data.get('chapter', None)
-            board = input_data.get('board', 'CBSE')  # Default to CBSE if not provided
-        else:
-            # Already a SharedRagInput object
-            query = input_data.query
-            subject = input_data.subject
-            class_ = input_data.class_
-            chapter = input_data.chapter
-            board = input_data.board or 'CBSE'  # Default to CBSE if None
-
-        print(f"RAG Retrieval Tool Input: {query}, {subject}, {class_}, {chapter}, {board}")
-
         rag_resource = RagResource(
-            rag_corpus=f'projects/{os.getenv("GOOGLE_CLOUD_PROJECT")}/locations/us-central1/ragCorpora/{os.getenv("RAG_CORPORA_ID")}'
+            rag_corpus=f'projects/rag-engine-vertex-ai-project/locations/us-central1/ragCorpora/5037276183213899776'
         )
 
         # Build metadata filter with proper escaping
@@ -163,12 +162,10 @@ def filtered_rag_retrieval_tool(input_data: SharedRagInput) -> str:
             rag_resources=[rag_resource],
             similarity_top_k=5,
             vector_distance_threshold=0.5,
-            # rag_retrieval_config=RagRetrievalConfig(
-            #     filter=Filter(metadata_filter=metadata_filter),
-            # )
         )
 
-        print(f"RAG Retrieval Tool Result: {type(result)}")
+        print(f'RESOURCE_RAG_CORPUS : projects/{os.getenv("GOOGLE_CLOUD_PROJECT")}/locations/us-central1/ragCorpora/{os.getenv("RAG_CORPORA_ID")}')
+        print(f"[DIRECT] RAG Retrieval Tool Result: {type(result)}")
         print(f"RAG Retrieval Tool Result Contexts: {result.contexts}")
 
         # Handle RetrieveContextsResponse object properly
@@ -198,7 +195,7 @@ class ChunkFilterOutput(BaseModel):
 
 rag_chunk_filter_agent = LlmAgent(
     name="RagChunkFilterAgent",
-    model=GEMINI_PRO_MODEL,
+    model=GEMINI_FLASH_MODEL,
     instruction="""
     🎯 Your job is to act as a chunk filter agent in the Sahayak 2.0 system.
 
@@ -224,115 +221,29 @@ rag_chunk_filter_agent = LlmAgent(
     }
     """,
     input_schema=ChunkFilterInput,
-    # output_schema=ChunkFilterOutput
 )
 
 class SharedRagInspectorTool(BaseTool):
     """Tool to inspect current user role from session state"""
-
+    
     async def run_async(self, context, tool_context: ToolContext) -> str:
         return context.session.state.get("role", "unknown")
 
 
-# Create shared RAG agent instance
-# shared_rag_agent = LlmAgent(
-#     name="SharedRagAgent",
-#     model=GEMINI_PRO_MODEL,
-#     instruction="""
-#     You are a shared RAG agent for Sahayak 2.0 educational assistant.
-#
-#     Your job is to retrieve relevant NCERT textbook content based on user queries and educational metadata.
-#
-#     Process:
-#     1. Receive a query with subject, class, and optional chapter information
-#     2. Use filtered_rag_retrieval_tool to fetch relevant content from the textbook corpus
-#     3. Return standardized output with subject, class, and content fields
-#
-#     IMPORTANT:
-#     - Always return the standardized output schema: {"subject", "class_", "content"}
-#     - If no content is found, content should contain "RAG_RETRIEVAL_FAILED"
-#     - Never invent or hallucinate textbook content
-#     - Log the query and role information for tracing
-#     """,
-#     # tools=[filtered_rag_retrieval_tool],
-#     after_model_callback=shared_rag_postprocess_callback,
-#     input_schema=SharedRagInput,
-#     output_schema=SharedRagOutput
-# )
+# Create a wrapper function to call the rag_chunk_filter_agent
+def chunk_filter_tool(input_data: ChunkFilterInput) -> ChunkFilterOutput:
+    """
+    Wrapper tool that calls the rag_chunk_filter_agent internally
+    """
+    try:
+        # Call the rag_chunk_filter_agent
+        result = rag_chunk_filter_agent.run(input_data)
+        return result
+    except Exception as e:
+        print(f"[Chunk Filter] Error during filtering: {e}")
+        # Return empty filtered chunks on error
+        return ChunkFilterOutput(filtered_chunks=[])
 
-vector_rag_agent = LlmAgent(
-    name="SharedRagAgent",
-    model=GEMINI_PRO_MODEL,
-    instruction="""
-    🎓 You are the `SharedRagAgent`, a retrieval-focused LLM agent in the Sahayak 2.0 AI system.
-    
-    Your job is to retrieve **accurate NCERT textbook content** from a class- and subject-specific vector database using a two-step tool process.
-    
-    --------------------
-    🚧 ALWAYS FOLLOW THIS EXACT SEQUENCE:
-    
-    1. ✅ **First**, call the `filtered_rag_retrieval_tool` using the following fields:
-       - `query` (from user input)
-       - `subject`
-       - `class_`
-       - `chapter` (optional)
-    
-       This will return either:
-       - String starting with "CHUNKS_FOUND:": Contains textbook chunks separated by "---CHUNK---"
-       - String "RAG_RETRIEVAL_FAILED": No relevant content found
-    
-    2. ✅ **Next**, IF step 1 returned "CHUNKS_FOUND:" prefix, parse the chunks and call `rag_chunk_filter_agent` with:
-       ```json
-       {
-         "query": "<original_user_query>",
-         "chunks": ["chunk1", "chunk2", "chunk3", ...]
-       }
-       ```
-       
-       To parse chunks: Split the response after "CHUNKS_FOUND:" by "---CHUNK---" separator.
-       
-       - This agent filters out irrelevant or noisy chunks and removes overlaps intelligently.
-       - If step 1 returned "RAG_RETRIEVAL_FAILED", SKIP this step.
-    
-    3. 🧹 **Then**, construct and return the final response using this standardized JSON structure:
-    
-    ```json
-    {
-      "subject": "<subject_from_input>",
-      "class_": "<class_from_input>",
-      "content": "<filtered_and_cleaned_textbook_content>"
-    }
-    ```
-    
-    ⚠️ IMPORTANT RULES:
-    
-    ❌ DO NOT generate or invent any content on your own.
-    
-    ✅ Use only what you receive from the tools.
-    
-    🔁 DO NOT call any tool more than once per request.
-    
-    🧼 Merge overlapping content from chunks only if needed, and ensure clarity and non-redundancy in final response.
-    
-    🤖 If rag_chunk_filter_agent returns an empty or null result, fallback to the raw content received from filtered_rag_retrieval_tool.
-    
-    📋 If filtered_rag_retrieval_tool returns "RAG_RETRIEVAL_FAILED", use that as the content value directly.
-    
-    Examples of good output:
-    
-    ✔️ Clean, paragraph-style explanations
-    ✔️ No duplication of sentences
-    ✔️ No figure captions or page numbers unless essential
-    ✔️ Clear mapping to the query asked
-    """,
-    tools=[
-        filtered_rag_retrieval_tool,
-        agent_tool.AgentTool(agent=rag_chunk_filter_agent)
-    ],
-    after_model_callback=shared_rag_postprocess_callback,
-    input_schema=SharedRagInput,
-    # output_schema=SharedRagOutput
-)
 
 # Create shared RAG agent instance
 shared_rag_agent = LlmAgent(
@@ -356,7 +267,72 @@ shared_rag_agent = LlmAgent(
     """,
     after_model_callback=shared_rag_postprocess_callback,
     input_schema=SharedRagInput,
-    # output_schema=SharedRagOutput
+    output_schema=SharedRagOutput
+)
+
+vector_rag_agent = LlmAgent(
+    name="SharedRagAgent",
+    model=GEMINI_PRO_MODEL,
+    instruction="""
+🎓 You are the `SharedRagAgent`, a retrieval-focused LLM agent in the Sahayak 2.0 AI system.
+
+    Your job is to retrieve **accurate NCERT textbook content** from a class- and subject-specific vector database and return it as raw content.
+
+--------------------
+    🚧 ALWAYS FOLLOW THIS EXACT SEQUENCE:
+    
+    1. ✅ **First**, call the `filtered_rag_retrieval_tool` using the following fields:
+   - `query` (from user input)
+   - `subject`
+   - `class_`
+   - `chapter` (optional)
+
+       This will return either:
+       - String starting with "CHUNKS_FOUND:": Contains textbook chunks separated by "---CHUNK---"
+       - String "RAG_RETRIEVAL_FAILED": No relevant content found
+
+    2. 🧹 **Then**, construct and return the final response using this EXACT JSON format:
+
+```json
+{
+  "subject": "<subject_from_input>",
+  "class_": "<class_from_input>",
+      "content": "<raw_textbook_content>"
+}
+    ```
+    
+    ⚠️ IMPORTANT RULES:
+    
+    ❌ DO NOT generate or invent any content on your own.
+    ❌ DO NOT add any greetings, role-specific formatting, or conversational elements.
+    ❌ DO NOT add phrases like "To understand..." or "Let's break it down..."
+    
+    ✅ Use only what you receive from the filtered_rag_retrieval_tool.
+    ✅ Return PURE textbook content without any additional formatting or explanations.
+    
+    🔁 Call filtered_rag_retrieval_tool exactly once per request.
+    
+    🧼 If you receive "CHUNKS_FOUND:" response, extract the chunks after the colon, split by "---CHUNK---", and join them with double line breaks to create clean textbook content.
+    
+    🤖 If you receive "RAG_RETRIEVAL_FAILED", return it as the content value.
+    
+    ✅ ALWAYS return VALID JSON in the exact format specified above. The response must be parseable JSON.
+    
+    Examples of content field (RAW textbook content only):
+    
+    ✔️ "Photosynthesis is the process by which green plants make their own food using sunlight, carbon dioxide, and water..."
+    ✔️ Direct textbook explanations without conversational elements
+    ✔️ Scientific facts and processes as written in NCERT
+    
+    ❌ NOT: "To understand photosynthesis, let's break it down..."
+    ❌ NOT: "Hey there, future scientist..."
+    ❌ NOT: Any role-specific or conversational formatting
+    """,
+    tools=[
+        filtered_rag_retrieval_tool
+    ],
+    after_model_callback=shared_rag_postprocess_callback,
+    input_schema=SharedRagInput
 )
 
 from copy import deepcopy

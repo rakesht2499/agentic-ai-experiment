@@ -1,0 +1,48 @@
+{
+  "total_concepts": 1833,
+  "total_relationships": 4,
+  "concept_types": {
+    "term": 1808,
+    "formula": 25
+  },
+  "relationship_types": {
+    "reacts_with": 4
+  },
+  "top_concepts": {
+    "solution": 76,
+    "refraction": 71,
+    "current": 67,
+    "light": 66,
+    "acid": 61,
+    "oxygen": 58,
+    "reaction": 56,
+    "hydrogen": 51,
+    "metal": 51,
+    "reflection": 42,
+    "sodium": 41,
+    "electricity": 40,
+    "cell": 40,
+    "circuit": 39,
+    "carbon dioxide": 34,
+    "resistance": 34,
+    "respiration": 32,
+    "magnesium": 31,
+    "salt": 29,
+    "H2": 28
+  },
+  "concepts_per_chapter": {
+    "Chapter 2": 276,
+    "Chapter 5": 292,
+    "Chapter 9": 238,
+    "Chapter 3": 158,
+    "Chapter 6": 122,
+    "Chapter 8": 53,
+    "Chapter 4": 118,
+    "Chapter 13": 74,
+    "Chapter 11": 181,
+    "Chapter 1": 232,
+    "Chapter 12": 128,
+    "Chapter 7": 155,
+    "Chapter 10": 117
+  }
+}
